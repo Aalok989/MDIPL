@@ -9,9 +9,10 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 // Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
 const DayOfWeekSalesChart = () => {
   // 🔹 Hardcoded sales data by day of week
@@ -34,8 +35,8 @@ const DayOfWeekSalesChart = () => {
       {
         label: "Total Sales",
         data: values,
-        backgroundColor: "rgba(37, 99, 235, 0.6)", // Tailwind blue-600
-        borderColor: "rgb(37, 99, 235)",
+        backgroundColor: "#FF714B",
+        borderColor: "#FF714B",
         borderWidth: 1,
         borderRadius: 6, // rounded bars
       },
@@ -48,8 +49,17 @@ const DayOfWeekSalesChart = () => {
       legend: { display: false },
       title: {
         display: true,
-        text: "📊 Weekly Rhythm: Total Sales by Day of the Week",
+        text: "Weekly Rhythm: Total Sales by Day of the Week",
         font: { size: 18 },
+      },
+      datalabels: {
+        color: '#ffffff',
+        anchor: 'center',
+        align: 'center',
+        clamp: true,
+        clip: true,
+        font: { weight: 'bold', size: 10 },
+        formatter: (value) => Number(value).toLocaleString(),
       },
     },
     scales: {

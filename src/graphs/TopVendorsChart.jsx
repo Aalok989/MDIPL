@@ -9,8 +9,36 @@ import {
   Legend,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
+
+// Abbreviate long vendor labels from backend for axis ticks
+function abbreviateLabel(raw, maxLength = 10) {
+  if (!raw || typeof raw !== 'string') return raw || '';
+  const name = raw.replace(/\s+/g, ' ').trim();
+  if (name.length <= maxLength) return name;
+
+  const stopwords = new Set(['AND', 'OF', 'THE', 'PVT', 'PVT.', 'PRIVATE', 'LTD', 'LTD.', 'LIMITED', 'CO', 'COMPANY']);
+  const words = name.split(' ').filter(Boolean);
+  const initials = words
+    .filter(w => !stopwords.has(w.toUpperCase()))
+    .map(w => w[0].toUpperCase())
+    .join('');
+  if (initials.length >= 2) return initials.slice(0, maxLength);
+
+  // Fallback smart truncation with ellipsis
+  let out = '';
+  for (let i = 0; i < words.length; i += 1) {
+    const w = words[i];
+    const chunk = (w.length > 6 ? w.slice(0, 6) + '.' : w) + (i < words.length - 1 ? ' ' : '');
+    if ((out + chunk).length > maxLength - 1) break;
+    out += chunk;
+  }
+  const truncated = out.trim().replace(/[ .]+$/, '');
+  if (truncated) return (truncated.length > maxLength ? truncated.slice(0, maxLength - 1) : truncated) + '…';
+  return name.slice(0, maxLength - 1) + '…';
+}
 
 const TopVendorsChart = () => {
   const [chartData, setChartData] = useState(null);
@@ -138,6 +166,18 @@ const TopVendorsChart = () => {
             return `${label}: ₹${value.toFixed(2)} Cr`;
           }
         }
+      },
+      datalabels: {
+        color: '#ffffff',
+        anchor: 'center',
+        align: 'center',
+        clamp: true,
+        clip: true,
+        font: {
+          weight: 'bold',
+          size: 10,
+        },
+        formatter: (value) => `₹${Number(value).toFixed(2)} Cr`,
       }
     },
     scales: {
@@ -146,8 +186,12 @@ const TopVendorsChart = () => {
           font: {
             size: 11,
           },
-          maxRotation: 45,
-          minRotation: 45, // Tilt labels diagonally
+          maxRotation: 0,
+          minRotation: 0,
+          callback: function(value, index) {
+            const original = data.labels?.[index] ?? String(value);
+            return abbreviateLabel(original);
+          }
         },
       },
       y: {

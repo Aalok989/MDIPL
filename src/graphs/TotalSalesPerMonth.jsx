@@ -63,7 +63,7 @@ const TotalSalesPerMonth = () => {
       legend: { display: true, position: "top" },
       title: {
         display: true,
-        text: "📈 Business Heartbeat: Total Sales per Month",
+        text: "Business Heartbeat: Total Sales per Month",
         font: { size: 18 },
       },
     },

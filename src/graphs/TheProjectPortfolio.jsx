@@ -13,6 +13,26 @@ import { getApiUrl } from "../config/api";
 
 ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale);
 
+// Abbreviate long names for axis tick labels if needed in custom axes
+function abbreviateLabel(raw, maxLength = 12) {
+  if (!raw || typeof raw !== 'string') return raw || '';
+  const name = raw.replace(/\s+/g, ' ').trim();
+  if (name.length <= maxLength) return name;
+  const words = name.split(' ').filter(Boolean);
+  const initials = words.map(w => w[0].toUpperCase()).join('');
+  if (initials.length >= 2) return initials.slice(0, maxLength);
+  let out = name.slice(0, maxLength - 1);
+  return out + '…';
+}
+
+// Compact number formatter for axes
+function formatAxisValue(num) {
+  const n = Number(num) || 0;
+  if (n >= 1e7) return `${(n / 1e7).toFixed(0)} Cr`;
+  if (n >= 1e5) return `${(n / 1e5).toFixed(0)} L`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}k`;
+  return `${n}`;
+}
 const TheProjectPortfolio = () => {
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,8 +110,19 @@ const TheProjectPortfolio = () => {
       }
     },
     scales: {
-      x: { title: { display: true, text: "Transaction Count" }, beginAtZero: true },
-      y: { title: { display: true, text: "Total Revenue (₹)" }, beginAtZero: true, ticks: { callback: (v) => `${v}` } },
+      x: { 
+        title: { display: true, text: "Transaction Count" }, 
+        beginAtZero: true,
+        ticks: {
+          callback: (v) => formatAxisValue(v),
+          maxTicksLimit: 6,
+        }
+      },
+      y: { 
+        title: { display: true, text: "Total Revenue (₹)" }, 
+        beginAtZero: true, 
+        ticks: { callback: (v) => formatAxisValue(v), maxTicksLimit: 6 } 
+      },
     },
   };
 

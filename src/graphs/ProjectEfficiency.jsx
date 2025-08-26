@@ -121,7 +121,7 @@ const ProjectEfficiency = () => {
               ),
               mode: "markers",
               marker: {
-                size: projectData.map((d) => (d.revenue_per_day / maxR) * 30), // scaled
+                size: projectData.map((d) => (d.revenue_per_day / maxR) * 100), // scaled
                 color: projectData.map((d) => d.revenue_per_day),
                 colorscale: "Viridis",
                 showscale: true,
@@ -153,6 +153,7 @@ const ProjectEfficiency = () => {
           }}
           style={{ width: "100%", height: "100%" }}
           config={{ responsive: true, displayModeBar: false }}
+          useResizeHandler
         />
       </div>
     </div>

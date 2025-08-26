@@ -9,18 +9,53 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { getApiUrl } from "../config/api";
 
 // Register required Chart.js modules
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
+// Abbreviate long project labels for axis ticks
+function abbreviateLabel(raw, maxLength = 12) {
+  if (!raw || typeof raw !== 'string') return raw || '';
+  const name = raw.replace(/\s+/g, ' ').trim();
+  if (name.length <= maxLength) return name;
+
+  const stopwords = new Set(['AND', 'OF', 'THE', 'PVT', 'PVT.', 'PRIVATE', 'LTD', 'LTD.', 'LIMITED', 'CO', 'COMPANY', 'PROJECT']);
+  const words = name.split(' ').filter(Boolean);
+  const initials = words
+    .filter(w => !stopwords.has(w.toUpperCase()))
+    .map(w => w[0].toUpperCase())
+    .join('');
+  if (initials.length >= 2) return initials.slice(0, maxLength);
+
+  let out = '';
+  for (let i = 0; i < words.length; i += 1) {
+    const w = words[i];
+    const chunk = (w.length > 6 ? w.slice(0, 6) + '.' : w) + (i < words.length - 1 ? ' ' : '');
+    if ((out + chunk).length > maxLength - 1) break;
+    out += chunk;
+  }
+  const truncated = out.trim().replace(/[ .]+$/, '');
+  if (truncated) return (truncated.length > maxLength ? truncated.slice(0, maxLength - 1) : truncated) + '…';
+  return name.slice(0, maxLength - 1) + '…';
+}
+
+// Compact formatter for numeric x-axis ticks (Indian style)
+function formatAxisValue(num) {
+  const n = Number(num) || 0;
+  if (n >= 1e7) return `${(n / 1e7).toFixed(0)} Cr`;
+  if (n >= 1e5) return `${(n / 1e5).toFixed(0)} L`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}k`;
+  return `${n}`;
+}
 const ProjectsByTotalRevenue = () => {
   const [projects, setProjects] = useState([]);
   const [revenues, setRevenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fallback sample data
+  // Fallback sample data in case API fails
   const fallbackProjects = [
     "Project Alpha", "Project Beta", "Project Gamma", "Project Delta", "Project Epsilon",
     "Project Zeta", "Project Eta", "Project Theta", "Project Iota", "Project Kappa",
@@ -32,43 +67,65 @@ const ProjectsByTotalRevenue = () => {
     68000, 65000, 62000, 60000, 58000
   ];
 
+  // 🔹 Fetch live projects data
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         setLoading(true);
         setError(null);
-
-        const url = getApiUrl('PROJECT_PROFITABILITY');
-        const response = await fetch(url);
-
-        // Check if response is OK
+        
+        const response = await fetch(getApiUrl('PROJECT_PROFITABILITY'));
+        
         if (!response.ok) {
-          throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        // Check content type before parsing
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          console.error('Received non-JSON response:', text.substring(0, 200));
-          throw new Error('Expected JSON, but received HTML or plain text. Check the API URL or authentication.');
-        }
-
+        
         const data = await response.json();
-
-        // Validate and extract data
-        if (data && Array.isArray(data.labels) && Array.isArray(data.datasets) && data.datasets[0]?.data) {
-          const validLabels = data.labels.filter(label => label && typeof label === 'string');
+        
+        // Check if data is already in Chart.js format
+        if (data && data.labels && data.datasets && Array.isArray(data.labels)) {
+          console.log('Data is already in Chart.js format with', data.labels.length, 'labels');
+          // Filter out empty labels and set the data
+          const validLabels = data.labels.filter(label => label && label.trim() !== '');
           const validData = data.datasets[0].data.slice(0, validLabels.length);
+          
           setProjects(validLabels);
           setRevenues(validData);
+        } else if (Array.isArray(data)) {
+          console.log('Data is an array with', data.length, 'items');
+          // Handle array format if needed
+          setProjects([]);
+          setRevenues([]);
+        } else if (data && typeof data === 'object') {
+          // If data is an object, check if it has a results property (common in Django REST)
+          if (Array.isArray(data.results)) {
+            console.log('Data has results array with', data.results.length, 'items');
+            // Process results array if needed
+            setProjects([]);
+            setRevenues([]);
+          } else if (Array.isArray(data.data)) {
+            console.log('Data has data array with', data.data.length, 'items');
+            // Process data array if needed
+            setProjects([]);
+            setRevenues([]);
+          } else {
+            console.warn('Unexpected data structure:', data);
+            console.log('Available keys:', Object.keys(data));
+            setProjects([]);
+            setRevenues([]);
+          }
         } else {
-          throw new Error('Invalid data structure in API response');
+          console.warn('Data is not in expected format:', data);
+          console.log('Data type:', typeof data);
+          setProjects([]);
+          setRevenues([]);
         }
-      } catch (err) {
-        console.error("Error fetching projects data:", err);
-        setError(err.message);
-        // Use fallback data
+        
+        setError(null);
+      } catch (error) {
+        console.error("Error fetching projects data:", error);
+        setError(error.message);
+        // Use fallback data instead of empty arrays
         setProjects(fallbackProjects);
         setRevenues(fallbackRevenues);
       } finally {
@@ -79,15 +136,14 @@ const ProjectsByTotalRevenue = () => {
     fetchProjects();
   }, []);
 
-  // Prepare chart data
   const data = {
-    labels: projects,
+    labels: projects.map(p => p || 'Unknown Project'),
     datasets: [
       {
         label: "Total Revenue",
-        data: revenues,
-        backgroundColor: "rgba(59,130,246,0.7)", // Tailwind blue-500
-        borderColor: "rgb(59,130,246)",
+        data: revenues.map(r => r || 0),
+        backgroundColor: "#991B1B",
+        borderColor: "#991B1B",
         borderWidth: 1,
         borderRadius: 6,
       },
@@ -95,16 +151,23 @@ const ProjectsByTotalRevenue = () => {
   };
 
   const options = {
-    indexAxis: "y",
+    indexAxis: "y", // 🔹 Horizontal bar chart
     responsive: true,
     plugins: {
       legend: { display: false },
       title: {
         display: true,
-        text: error 
-          ? "💰 Sample Data: Top 15 Projects by Total Revenue" 
-          : "💰 Cash Cows: Top 15 Projects by Total Revenue",
+        text: error ? "Sample Data: Top Projects by Total Revenue" : "Cash Cows: Top 15 Projects by Total Revenue",
         font: { size: 18 },
+      },
+      datalabels: {
+        color: '#ffffff',
+        anchor: 'center',
+        align: 'center',
+        clamp: true,
+        clip: true,
+        font: { weight: 'bold', size: 10 },
+        formatter: (value) => Number(value).toLocaleString(),
       },
     },
     scales: {
@@ -112,16 +175,25 @@ const ProjectsByTotalRevenue = () => {
         beginAtZero: true,
         title: { display: true, text: "Total Revenue" },
         ticks: {
-          callback: (value) => `$${value.toLocaleString()}`,
+          callback: (value) => formatAxisValue(value),
+          maxTicksLimit: 6,
         },
       },
       y: {
         title: { display: true, text: "Project Name" },
+        ticks: {
+          autoSkip: false,
+          font: { size: 10 },
+          callback: function(value, index) {
+            const original = data.labels?.[index] ?? String(value);
+            return abbreviateLabel(original);
+          }
+        }
       },
     },
   };
 
-  // Error state
+  // Show error state
   if (error) {
     return (
       <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-4xl mx-auto">
@@ -140,7 +212,7 @@ const ProjectsByTotalRevenue = () => {
     );
   }
 
-  // Loading state
+  // Show loading state
   if (loading) {
     return (
       <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-4xl mx-auto">
@@ -152,8 +224,8 @@ const ProjectsByTotalRevenue = () => {
     );
   }
 
-  // No data
-  if (!projects.length || !revenues.length) {
+  // Show empty state if no data
+  if (!Array.isArray(projects) || projects.length === 0 || !Array.isArray(revenues) || revenues.length === 0) {
     return (
       <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-4xl mx-auto">
         <div className="text-center text-gray-500">

@@ -75,18 +75,18 @@ const Sidebar = () => {
   }
 
   return (
-    <div className="w-full h-full p-6 flex flex-col overflow-hidden">
+    <div className="w-full h-full p-6 flex flex-col overflow-hidden lg:min-h-screen">
       <div className="mb-4 flex items-center gap-3 w-full">
         <img src={mdiplLogo} alt="MDIPL logo" className="h-16 md:h-20 w-auto" />
         <div className="flex-1">
-          <h1 className="text-2xl md:text-2xl lg:text-2xl font-extrabold text-center bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent transition-colors duration-300 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 font-outfit">
+          <h1 className="text-2xl md:text-2xl lg:text-2xl font-extrabold text-center font-outfit" style={{ color: '#0B1D51' }}>
             Analytics Dashboard
           </h1>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col gap-3 min-h-0">
-      <div className="space-y-3 pr-1">
+      <div className="space-y-3 pr-1 lg:flex-none lg:max-h-[60vh] lg:overflow-auto">
       <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200 p-3 rounded-2xl shadow-lg border border-blue-300/50">
         <div className="relative z-10">
           <div className="flex items-center justify-between">
@@ -159,8 +159,8 @@ const Sidebar = () => {
         </div>
       </div>
       
-      <div className="flex-1 min-h-0 rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="relative w-full h-full">
+      <div className="flex-1 min-h-0 rounded-2xl border border-gray-200 overflow-hidden lg:flex-none lg:h-[40vh]">
+        <div className="relative w-full h-full lg:h-[40vh]">
           <div className="absolute inset-0">
             <GeoMap />
           </div>

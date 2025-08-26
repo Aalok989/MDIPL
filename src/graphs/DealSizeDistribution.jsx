@@ -10,9 +10,10 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 // Register modules including LogarithmicScale
-ChartJS.register(CategoryScale, LinearScale, LogarithmicScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, LogarithmicScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
 const DealSizeDistribution = () => {
   // 🔹 Hardcoded bill_total values
@@ -30,8 +31,8 @@ const DealSizeDistribution = () => {
       {
         label: "Deals",
         data: dataCounts,
-        backgroundColor: "rgba(34,197,94,0.6)", // Tailwind green-500
-        borderColor: "rgb(34,197,94)",
+        backgroundColor: "#16A34A",
+        borderColor: "#16A34A",
         borderWidth: 1,
         borderRadius: 4,
       },
@@ -44,8 +45,17 @@ const DealSizeDistribution = () => {
       legend: { display: false },
       title: {
         display: true,
-        text: "📈 Deal Size Distribution (Log Scale)",
+        text: "Deal Size Distribution (Log Scale)",
         font: { size: 18 },
+      },
+      datalabels: {
+        color: '#ffffff',
+        anchor: 'center',
+        align: 'center',
+        clamp: true,
+        clip: true,
+        font: { weight: 'bold', size: 10 },
+        formatter: (value) => Number(value).toLocaleString(),
       },
     },
     scales: {

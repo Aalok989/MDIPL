@@ -1,4 +1,5 @@
 import React from 'react';
+import useResizeKey from '../hooks/useResizeKey';
 
 // Import all graph components
 import SpendBySeasonChart from '../graphs/SpendBySeasonChart';
@@ -29,6 +30,7 @@ const GraphCard = ({ children }) => {
 };
 
 const GraphSection = () => {
+  const resizeKey = useResizeKey();
   const charts = [
     { component: <SpendBySeasonChart /> },
     { component: <TopVendorsChart /> },
@@ -51,16 +53,20 @@ const GraphSection = () => {
 
   return (
     <div className="w-full p-4 bg-gray-50">
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800">Analytics Dashboard</h2>
-        <p className="text-sm text-gray-500">Comprehensive overview of market performance and trends</p>
+      {/* Header (sticky banner, aligned with grid) */}
+      <div className="sticky top-0 z-10 mb-6">
+        <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/70 backdrop-blur-sm rounded-xl border-b border-gray-200">
+          <div className="text-center px-4 py-3">
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900">Insights & Trends</h2>
+            <p className="text-xs md:text-sm text-gray-500">Interactive charts for performance and risk</p>
+          </div>
+        </div>
       </div>
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {charts.map((chart, index) => (
-          <GraphCard key={index}>
+          <GraphCard key={`${resizeKey}-${index}`}>
             {chart.component}
           </GraphCard>
         ))}

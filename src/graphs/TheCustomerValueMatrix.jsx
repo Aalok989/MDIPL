@@ -65,7 +65,7 @@ const TheCustomerValueMatrix = () => {
       },
       title: {
         display: true,
-        text: "📊 The Customer Value Matrix",
+        text: "The Customer Value Matrix",
         font: { size: 18 },
       },
     },

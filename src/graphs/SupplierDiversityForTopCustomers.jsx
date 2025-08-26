@@ -11,9 +11,35 @@ import {
   Legend,
 } from "chart.js";
 import { getApiUrl } from "../config/api";
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
+// Abbreviate long customer labels
+function abbreviateLabel(raw, maxLength = 12) {
+  if (!raw || typeof raw !== 'string') return raw || '';
+  const name = raw.replace(/\s+/g, ' ').trim();
+  if (name.length <= maxLength) return name;
+
+  const stopwords = new Set(['AND', 'OF', 'THE', 'PVT', 'PVT.', 'PRIVATE', 'LTD', 'LTD.', 'LIMITED', 'CO', 'COMPANY']);
+  const words = name.split(' ').filter(Boolean);
+  const initials = words
+    .filter(w => !stopwords.has(w.toUpperCase()))
+    .map(w => w[0].toUpperCase())
+    .join('');
+  if (initials.length >= 2) return initials.slice(0, maxLength);
+
+  let out = '';
+  for (let i = 0; i < words.length; i += 1) {
+    const w = words[i];
+    const chunk = (w.length > 6 ? w.slice(0, 6) + '.' : w) + (i < words.length - 1 ? ' ' : '');
+    if ((out + chunk).length > maxLength - 1) break;
+    out += chunk;
+  }
+  const truncated = out.trim().replace(/[ .]+$/, '');
+  if (truncated) return (truncated.length > maxLength ? truncated.slice(0, maxLength - 1) : truncated) + '…';
+  return name.slice(0, maxLength - 1) + '…';
+}
 const SupplierDiversityForTopCustomers = () => {
   const [labels, setLabels] = useState([]);
   const [values, setValues] = useState([]);
@@ -64,8 +90,8 @@ const SupplierDiversityForTopCustomers = () => {
       {
         label: "Unique Suppliers",
         data: values,
-        backgroundColor: "rgba(59, 130, 246, 0.6)",
-        borderColor: "rgb(59, 130, 246)",
+        backgroundColor: "#1D4ED8",
+        borderColor: "#1D4ED8",
         borderWidth: 1,
         borderRadius: 6,
       },
@@ -83,14 +109,27 @@ const SupplierDiversityForTopCustomers = () => {
         font: { size: 16 },
       },
       tooltip: { enabled: true },
+      datalabels: {
+        color: '#ffffff',
+        anchor: 'center',
+        align: 'center',
+        clamp: true,
+        clip: true,
+        font: { weight: 'bold', size: 10 },
+        formatter: (value) => Number(value).toLocaleString(),
+      },
     },
     scales: {
       x: {
         title: { display: false },
         ticks: {
           autoSkip: true,
-          maxRotation: 45,
+          maxRotation: 0,
           minRotation: 0,
+          callback: function(value, index) {
+            const original = data.labels?.[index] ?? String(value);
+            return abbreviateLabel(original);
+          }
         },
       },
       y: {

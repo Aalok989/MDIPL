@@ -127,7 +127,26 @@ const SpendBySeasonChart = () => {
         }
       },
       datalabels: {
-        display: false,
+        display: true,
+        color: '#ffffff',
+        borderRadius: 4,
+        backgroundColor: (ctx) => {
+          const bg = ctx.dataset.backgroundColor;
+          if (Array.isArray(bg)) return 'rgba(0,0,0,0.35)';
+          return 'rgba(0,0,0,0.35)';
+        },
+        padding: 4,
+        font: {
+          weight: 'bold',
+          size: 10,
+        },
+        formatter: (value, ctx) => {
+          const data = ctx.dataset?.data || [];
+          const total = data.reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0);
+          if (!total) return '';
+          const pct = (value / total) * 100;
+          return `${pct.toFixed(1)}%`;
+        },
       }
     },
     layout: { padding: 10 }

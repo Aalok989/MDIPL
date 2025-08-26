@@ -9,9 +9,10 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 // Register chart.js modules
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
 const TypicalDealSize = () => {
   // 🔹 Hardcoded "bill_total" sample data (like deals)
@@ -36,8 +37,8 @@ const TypicalDealSize = () => {
       {
         label: "Number of Deals",
         data: bins,
-        backgroundColor: "rgba(239, 68, 68, 0.6)", // Tailwind red-500
-        borderColor: "rgb(239, 68, 68)",
+        backgroundColor: "#F97A00",
+        borderColor: "#F97A00",
         borderWidth: 1,
         borderRadius: 4,
       },
@@ -50,8 +51,17 @@ const TypicalDealSize = () => {
       legend: { display: false },
       title: {
         display: true,
-        text: '📊 What is a "Typical" Deal Size?',
+        text: 'What is a "Typical" Deal Size?',
         font: { size: 18 },
+      },
+      datalabels: {
+        color: '#ffffff',
+        anchor: 'center',
+        align: 'center',
+        clamp: true,
+        clip: true,
+        font: { weight: 'bold', size: 10 },
+        formatter: (value) => Number(value).toLocaleString(),
       },
     },
     scales: {

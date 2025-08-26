@@ -9,11 +9,46 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { getApiUrl } from "../config/api";
 
 // Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
+// Abbreviate long customer labels for y-axis ticks
+function abbreviateLabel(raw, maxLength = 12) {
+  if (!raw || typeof raw !== 'string') return raw || '';
+  const name = raw.replace(/\s+/g, ' ').trim();
+  if (name.length <= maxLength) return name;
+
+  const stopwords = new Set(['AND', 'OF', 'THE', 'PVT', 'PVT.', 'PRIVATE', 'LTD', 'LTD.', 'LIMITED', 'CO', 'COMPANY']);
+  const words = name.split(' ').filter(Boolean);
+  const initials = words
+    .filter(w => !stopwords.has(w.toUpperCase()))
+    .map(w => w[0].toUpperCase())
+    .join('');
+  if (initials.length >= 2) return initials.slice(0, maxLength);
+
+  let out = '';
+  for (let i = 0; i < words.length; i += 1) {
+    const w = words[i];
+    const chunk = (w.length > 6 ? w.slice(0, 6) + '.' : w) + (i < words.length - 1 ? ' ' : '');
+    if ((out + chunk).length > maxLength - 1) break;
+    out += chunk;
+  }
+  const truncated = out.trim().replace(/[ .]+$/, '');
+  if (truncated) return (truncated.length > maxLength ? truncated.slice(0, maxLength - 1) : truncated) + '…';
+  return name.slice(0, maxLength - 1) + '…';
+}
+
+// Compact x-axis tick formatter
+function formatAxisValue(num) {
+  const n = Number(num) || 0;
+  if (n >= 1e7) return `${(n / 1e7).toFixed(0)} Cr`;
+  if (n >= 1e5) return `${(n / 1e5).toFixed(0)} L`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}k`;
+  return `${n}`;
+}
 const LoyalLegion = () => {
   const [customers, setCustomers] = useState([]);
   const [billCounts, setBillCounts] = useState([]);
@@ -106,8 +141,8 @@ const LoyalLegion = () => {
       {
         label: "Number of Bills",
         data: billCounts.map(b => b || 0),
-        backgroundColor: "rgba(34,197,94,0.7)", // Tailwind green-500
-        borderColor: "rgb(34,197,94)",
+        backgroundColor: "#932F67",
+        borderColor: "#932F67",
         borderWidth: 1,
         borderRadius: 6,
       },
@@ -122,14 +157,27 @@ const LoyalLegion = () => {
       legend: { display: false },
       title: {
         display: true,
-        text: error ? "🛡️ Sample Data: Top Customers by Number of Bills" : "🛡️ Loyal Legion: Top 15 Customers by Number of Bills",
+        text: error ? "Sample Data: Top Customers by Number of Bills" : "Loyal Legion: Top 15 Customers by Number of Bills",
         font: { size: 18 },
+      },
+      datalabels: {
+        color: '#ffffff',
+        anchor: 'center',
+        align: 'center',
+        clamp: true,
+        clip: true,
+        font: { weight: 'bold', size: 10 },
+        formatter: (value) => Number(value).toLocaleString(),
       },
     },
     scales: {
       x: {
         beginAtZero: true,
         title: { display: true, text: "Number of Bills" },
+        ticks: {
+          callback: function(value) { return formatAxisValue(value); },
+          maxTicksLimit: 6,
+        }
       },
       y: {
         title: { display: true, text: "Customer" },
@@ -137,6 +185,10 @@ const LoyalLegion = () => {
           autoSkip: false,
           maxTicksLimit: customers.length || 50,
           font: { size: 10 },
+          callback: function(value, index) {
+            const original = data.labels?.[index] ?? String(value);
+            return abbreviateLabel(original);
+          }
         },
       },
     },

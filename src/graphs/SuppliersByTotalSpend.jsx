@@ -9,10 +9,47 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { getApiUrl } from "../config/api";
 
 // Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
+
+// Abbreviate long supplier labels from backend for axis ticks
+function abbreviateLabel(raw, maxLength = 12) {
+  if (!raw || typeof raw !== 'string') return raw || '';
+  const name = raw.replace(/\s+/g, ' ').trim();
+  if (name.length <= maxLength) return name;
+
+  const stopwords = new Set(['AND', 'OF', 'THE', 'PVT', 'PVT.', 'PRIVATE', 'LTD', 'LTD.', 'LIMITED', 'CO', 'COMPANY']);
+  const words = name.split(' ').filter(Boolean);
+  const initials = words
+    .filter(w => !stopwords.has(w.toUpperCase()))
+    .map(w => w[0].toUpperCase())
+    .join('');
+  if (initials.length >= 2) return initials.slice(0, maxLength);
+
+  // Fallback smart truncation with ellipsis
+  let out = '';
+  for (let i = 0; i < words.length; i += 1) {
+    const w = words[i];
+    const chunk = (w.length > 6 ? w.slice(0, 6) + '.' : w) + (i < words.length - 1 ? ' ' : '');
+    if ((out + chunk).length > maxLength - 1) break;
+    out += chunk;
+  }
+  const truncated = out.trim().replace(/[ .]+$/, '');
+  if (truncated) return (truncated.length > maxLength ? truncated.slice(0, maxLength - 1) : truncated) + '…';
+  return name.slice(0, maxLength - 1) + '…';
+}
+
+// Compact formatter for numeric axis ticks (Indian style)
+function formatAxisValue(num) {
+  const n = Number(num) || 0;
+  if (n >= 1e7) return `${(n / 1e7).toFixed(0)} Cr`;
+  if (n >= 1e5) return `${(n / 1e5).toFixed(0)} L`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}k`;
+  return `${n}`;
+}
 
 const SuppliersByTotalSpend = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -109,8 +146,8 @@ const SuppliersByTotalSpend = () => {
       {
         label: "Total Spend",
         data: sortedSuppliers.map((s) => s?.bill_total || 0),
-        backgroundColor: "rgba(16, 185, 129, 0.6)", // Tailwind green-500
-        borderColor: "rgb(16, 185, 129)",
+        backgroundColor: "#3E0703",
+        borderColor: "#3E0703",
         borderWidth: 1,
         borderRadius: 6,
       },
@@ -124,14 +161,39 @@ const SuppliersByTotalSpend = () => {
       legend: { display: false },
       title: {
         display: true,
-        text: error ? "💡 Sample Data: Top Suppliers by Total Spend" : "💡 Our Lifelines: Top 10 Suppliers by Total Spend",
+        text: error ? "Sample Data: Top Suppliers by Total Spend" : "Our Lifelines: Top 10 Suppliers by Total Spend",
         font: { size: 18 },
+      },
+      datalabels: {
+        color: '#ffffff',
+        anchor: 'center',
+        align: 'center',
+        clamp: true,
+        clip: true,
+        font: { weight: 'bold', size: 10 },
+        formatter: (value) => Number(value).toLocaleString(),
       },
     },
     scales: {
       x: {
         beginAtZero: true,
+        ticks: {
+          callback: function(value) {
+            return formatAxisValue(value);
+          },
+          maxTicksLimit: 6,
+        },
       },
+      y: {
+        ticks: {
+          autoSkip: false,
+          font: { size: 10 },
+          callback: function(value, index) {
+            const original = chartData.labels?.[index] ?? String(value);
+            return abbreviateLabel(original);
+          }
+        }
+      }
     },
   };
 
