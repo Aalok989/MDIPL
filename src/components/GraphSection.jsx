@@ -19,6 +19,10 @@ import WhoFundsOurTopProjects from '../graphs/WhoFundsOurTopProjects';
 import SupplyChainConcentrationRisk from '../graphs/SupplyChainConcentrationRisk';
 import SupplierDiversityForTopCustomers from '../graphs/SupplierDiversityForTopCustomers';
 import TheProjectPortfolio from '../graphs/TheProjectPortfolio';
+import SuccessBlueprintSuppliers from '../graphs/SuccessBlueprintSuppliers';
+import SuccessBlueprintCustomers from '../graphs/SuccessBlueprintCustomers';
+import RevenueForecast from '../graphs/RevenueForecast';
+import CustomerByHealthScore from '../graphs/CustomerByHealthScore';
 
 // Reusable card component
 const GraphCard = ({ children }) => {
@@ -40,7 +44,7 @@ const GraphSection = () => {
     { component: <SuppliersByTotalSpend /> },
     { component: <CustomersByTotalRevenue /> },
     { component: <TypicalDealSize /> },
-    { component: <DealSizeDistribution /> },
+    
     { component: <ProjectsByTotalRevenue /> },
     { component: <LoyalLegion /> },
     { component: <TheCustomerValueMatrix /> },
@@ -49,6 +53,11 @@ const GraphSection = () => {
     // { component: <SupplyChainConcentrationRisk /> },
     { component: <SupplierDiversityForTopCustomers /> },
     { component: <TheProjectPortfolio /> },
+    { component: <RevenueForecast /> },
+    { component: <SuccessBlueprintCustomers /> },
+    { component: <CustomerByHealthScore /> },
+    { component: <SuccessBlueprintSuppliers /> },
+    { component: <DealSizeDistribution /> },
   ];
 
   return (

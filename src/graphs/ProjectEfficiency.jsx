@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import Plot from "react-plotly.js";
 import { getApiUrl } from "../config/api";
+import useResizeKey from "../hooks/useResizeKey";
 
 const ProjectEfficiency = () => {
+  const resizeKey = useResizeKey(200);
   const [projectData, setProjectData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -108,6 +110,7 @@ const ProjectEfficiency = () => {
       {/* Chart */}
       <div className="flex-1 px-2 pb-2">
         <Plot
+          key={resizeKey}
           data={[
             {
               x: projectData.map((d) => d.duration_days),

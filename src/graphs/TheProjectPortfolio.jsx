@@ -10,6 +10,7 @@ import {
   LinearScale,
 } from "chart.js";
 import { getApiUrl } from "../config/api";
+import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 
 ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale);
 
@@ -25,15 +26,8 @@ function abbreviateLabel(raw, maxLength = 12) {
   return out + '…';
 }
 
-// Compact number formatter for axes
-function formatAxisValue(num) {
-  const n = Number(num) || 0;
-  if (n >= 1e7) return `${(n / 1e7).toFixed(0)} Cr`;
-  if (n >= 1e5) return `${(n / 1e5).toFixed(0)} L`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}k`;
-  return `${n}`;
-}
-const TheProjectPortfolio = () => {
+export default function TheProjectPortfolio() {
+  const { formatAxisValue } = useLabelAbbreviation();
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -78,7 +72,6 @@ const TheProjectPortfolio = () => {
     );
   }
 
- // ... existing code ...
   const chartData = {
     datasets: [
       {
@@ -133,5 +126,3 @@ const TheProjectPortfolio = () => {
     </>
   );
 };
-
-export default TheProjectPortfolio;

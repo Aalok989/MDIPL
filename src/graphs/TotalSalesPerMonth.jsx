@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -11,7 +11,7 @@ import {
   Legend,
 } from "chart.js";
 
-// Register Chart.js components
+// Register required Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -22,40 +22,62 @@ ChartJS.register(
   Legend
 );
 
+// Optional: If you have 'chartjs-plugin-datalabels' installed globally,
+// we'll disable it for this chart. No need to import it here.
+// If you don't use it, this config is safely ignored.
+
+import { getApiUrl } from "../config/api";
+import useResizeKey from "../hooks/useResizeKey";
+
 const TotalSalesPerMonth = () => {
-  // 🔹 Hardcoded monthly sales data
-  const salesData = [
-    { bill_date: "2023-01-01", bill_total: 5000 },
-    { bill_date: "2023-02-01", bill_total: 7200 },
-    { bill_date: "2023-03-01", bill_total: 6100 },
-    { bill_date: "2023-04-01", bill_total: 8300 },
-    { bill_date: "2023-05-01", bill_total: 9200 },
-    { bill_date: "2023-06-01", bill_total: 10500 },
-    { bill_date: "2023-07-01", bill_total: 9800 },
-    { bill_date: "2023-08-01", bill_total: 11200 },
-  ];
+  const resizeKey = useResizeKey();
+  const [chartData, setChartData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const labels = salesData.map((item) =>
-    new Date(item.bill_date).toLocaleDateString("en-US", {
-      month: "short",
-      year: "numeric",
-    })
-  );
+  useEffect(() => {
+    const fetchSalesData = async () => {
+      try {
+        const response = await fetch(getApiUrl("TOTAL_SALES_PER_MONTH"));
+        if (!response.ok) throw new Error("Failed to fetch sales data");
+        const data = await response.json();
 
-  const data = {
-    labels,
-    datasets: [
-      {
-        label: "Total Sales",
-        data: salesData.map((item) => item.bill_total),
-        borderColor: "rgb(37, 99, 235)", // Tailwind blue-600
-        backgroundColor: "rgba(37, 99, 235, 0.2)",
-        tension: 0.3,
-        pointRadius: 5,
-        pointBackgroundColor: "rgb(37, 99, 235)",
-      },
-    ],
-  };
+        // Format labels (YYYY-MM → "MMM YYYY")
+        const labels = data.labels.map((dateStr) => {
+          const [year, month] = dateStr.split("-");
+          return new Date(year, month - 1).toLocaleDateString("en-US", {
+            month: "short",
+            year: "numeric",
+          });
+        });
+
+        const chartDataset = {
+          labels,
+          datasets: data.datasets.map((ds) => ({
+            ...ds,
+            borderColor: "rgb(37, 99, 235)", // Tailwind blue-600
+            backgroundColor: "rgba(37, 99, 235, 0.2)",
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: "rgb(37, 99, 235)",
+            // Ensure no data labels show (if plugin is active)
+            datalabels: {
+              display: false,
+            },
+          })),
+        };
+
+        setChartData(chartDataset);
+      } catch (err) {
+        console.error("Error fetching chart data:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSalesData();
+  }, []);
 
   const options = {
     responsive: true,
@@ -65,6 +87,16 @@ const TotalSalesPerMonth = () => {
         display: true,
         text: "Business Heartbeat: Total Sales per Month",
         font: { size: 18 },
+        align: 'start',
+        color: '#1f2937',
+        padding: { top: 6, bottom: 10 },
+      },
+      tooltip: {
+        enabled: true, // Enable hover tooltips
+      },
+      // Disable data labels globally for this chart
+      datalabels: {
+        display: false,
       },
     },
     scales: {
@@ -72,11 +104,21 @@ const TotalSalesPerMonth = () => {
         ticks: { beginAtZero: true },
       },
     },
+    // Optional: Keep points visible but no labels
+    interaction: {
+      mode: "index",
+      intersect: false,
+    },
+    hover: {
+      mode: "nearest",
+      intersect: true,
+    },
   };
 
-  return (
-      <Line data={data} options={options} />
-  );
+  if (loading) return <p className="text-gray-500">Loading sales data...</p>;
+  if (error) return <p className="text-red-500">Error: {error}</p>;
+
+  return <Line data={chartData} options={options} />;
 };
 
 export default TotalSalesPerMonth;

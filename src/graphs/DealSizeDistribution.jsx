@@ -47,6 +47,9 @@ const DealSizeDistribution = () => {
         display: true,
         text: "Deal Size Distribution (Log Scale)",
         font: { size: 18 },
+        align: 'start',
+        color: '#1f2937',
+        padding: { top: 6, bottom: 10 },
       },
       datalabels: {
         color: '#ffffff',

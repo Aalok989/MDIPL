@@ -12,35 +12,20 @@ import {
 } from "chart.js";
 import { getApiUrl } from "../config/api";
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartDataLabels
+);
 
-// Abbreviate long customer labels
-function abbreviateLabel(raw, maxLength = 12) {
-  if (!raw || typeof raw !== 'string') return raw || '';
-  const name = raw.replace(/\s+/g, ' ').trim();
-  if (name.length <= maxLength) return name;
-
-  const stopwords = new Set(['AND', 'OF', 'THE', 'PVT', 'PVT.', 'PRIVATE', 'LTD', 'LTD.', 'LIMITED', 'CO', 'COMPANY']);
-  const words = name.split(' ').filter(Boolean);
-  const initials = words
-    .filter(w => !stopwords.has(w.toUpperCase()))
-    .map(w => w[0].toUpperCase())
-    .join('');
-  if (initials.length >= 2) return initials.slice(0, maxLength);
-
-  let out = '';
-  for (let i = 0; i < words.length; i += 1) {
-    const w = words[i];
-    const chunk = (w.length > 6 ? w.slice(0, 6) + '.' : w) + (i < words.length - 1 ? ' ' : '');
-    if ((out + chunk).length > maxLength - 1) break;
-    out += chunk;
-  }
-  const truncated = out.trim().replace(/[ .]+$/, '');
-  if (truncated) return (truncated.length > maxLength ? truncated.slice(0, maxLength - 1) : truncated) + '…';
-  return name.slice(0, maxLength - 1) + '…';
-}
-const SupplierDiversityForTopCustomers = () => {
+export default function SupplierDiversityForTopCustomers() {
+  const { abbreviateLabel } = useLabelAbbreviation(12);
   const [labels, setLabels] = useState([]);
   const [values, setValues] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,6 +92,9 @@ const SupplierDiversityForTopCustomers = () => {
         display: true,
         text: "Supplier Diversity for Top Customers (Unique Suppliers)",
         font: { size: 16 },
+        align: 'start',
+        color: '#1f2937',
+        padding: { top: 6, bottom: 10 },
       },
       tooltip: { enabled: true },
       datalabels: {
@@ -150,5 +138,3 @@ const SupplierDiversityForTopCustomers = () => {
     <Bar data={data} options={options} />
   );
 };
-
-export default SupplierDiversityForTopCustomers;

@@ -10,37 +10,13 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+import { getApiUrl } from '../config/api';
+import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
-// Abbreviate long vendor labels from backend for axis ticks
-function abbreviateLabel(raw, maxLength = 10) {
-  if (!raw || typeof raw !== 'string') return raw || '';
-  const name = raw.replace(/\s+/g, ' ').trim();
-  if (name.length <= maxLength) return name;
-
-  const stopwords = new Set(['AND', 'OF', 'THE', 'PVT', 'PVT.', 'PRIVATE', 'LTD', 'LTD.', 'LIMITED', 'CO', 'COMPANY']);
-  const words = name.split(' ').filter(Boolean);
-  const initials = words
-    .filter(w => !stopwords.has(w.toUpperCase()))
-    .map(w => w[0].toUpperCase())
-    .join('');
-  if (initials.length >= 2) return initials.slice(0, maxLength);
-
-  // Fallback smart truncation with ellipsis
-  let out = '';
-  for (let i = 0; i < words.length; i += 1) {
-    const w = words[i];
-    const chunk = (w.length > 6 ? w.slice(0, 6) + '.' : w) + (i < words.length - 1 ? ' ' : '');
-    if ((out + chunk).length > maxLength - 1) break;
-    out += chunk;
-  }
-  const truncated = out.trim().replace(/[ .]+$/, '');
-  if (truncated) return (truncated.length > maxLength ? truncated.slice(0, maxLength - 1) : truncated) + '…';
-  return name.slice(0, maxLength - 1) + '…';
-}
-
-const TopVendorsChart = () => {
+export default function TopVendorsChart() {
+  const { abbreviateLabel } = useLabelAbbreviation(10);
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -153,10 +129,9 @@ const TopVendorsChart = () => {
           size: 16,
           weight: "bold",
         },
-        padding: {
-          top: 10,
-          bottom: 15,
-        },
+        align: "start",
+        color: '#1f2937',
+        padding: { top: 6, bottom: 10 },
       },
       tooltip: {
         callbacks: {
@@ -223,5 +198,3 @@ const TopVendorsChart = () => {
     </div>
   );
 };
-
-export default TopVendorsChart;

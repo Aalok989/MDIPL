@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -9,41 +9,49 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import ChartDataLabels from 'chartjs-plugin-datalabels';
+import { apiRequest } from "../config/api";
 
 // Register chart.js modules
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const TypicalDealSize = () => {
-  // 🔹 Hardcoded "bill_total" sample data (like deals)
-  const billTotals = [500, 1200, 800, 1500, 2200, 3000, 3200, 4500, 4700, 4900, 5200, 6000, 6500, 7200, 8000, 9500, 10000];
+  const [chartData, setChartData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Create histogram bins (1000 increments)
-  const binSize = 1000;
-  const maxVal = Math.max(...billTotals);
-  const numBins = Math.ceil(maxVal / binSize);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await apiRequest('DEAL_SIZE_DISTRIBUTION');
+        
+        // Transform the API data to match the chart format
+        const transformedData = {
+          labels: data.labels,
+          datasets: [
+            {
+              label: "Number of Deals",
+              data: data.datasets[0].data,
+              backgroundColor: "rgba(239, 68, 68, 0.6)", // Tailwind red-500
+              borderColor: "rgb(239, 68, 68)",
+              borderWidth: 1,
+              borderRadius: 4,
+            },
+          ],
+        };
+        
+        setChartData(transformedData);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching deal size data:', err);
+        setError('Failed to load deal size data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const bins = Array(numBins).fill(0);
-  billTotals.forEach((val) => {
-    const idx = Math.floor(val / binSize);
-    bins[idx] += 1;
-  });
-
-  const labels = bins.map((_, i) => `${i * binSize} - ${(i + 1) * binSize}`);
-
-  const data = {
-    labels,
-    datasets: [
-      {
-        label: "Number of Deals",
-        data: bins,
-        backgroundColor: "#F97A00",
-        borderColor: "#F97A00",
-        borderWidth: 1,
-        borderRadius: 4,
-      },
-    ],
-  };
+    fetchData();
+  }, []);
 
   const options = {
     responsive: true,
@@ -53,26 +61,42 @@ const TypicalDealSize = () => {
         display: true,
         text: 'What is a "Typical" Deal Size?',
         font: { size: 18 },
-      },
-      datalabels: {
-        color: '#ffffff',
-        anchor: 'center',
-        align: 'center',
-        clamp: true,
-        clip: true,
-        font: { weight: 'bold', size: 10 },
-        formatter: (value) => Number(value).toLocaleString(),
+        align: 'start',
+        color: '#1f2937',
+        padding: { top: 6, bottom: 10 },
       },
     },
     scales: {
       y: { beginAtZero: true, title: { display: true, text: "Number of Deals" } },
-      x: { title: { display: true, text: "Bill Total Range" } },
+      x: { title: { display: true, text: "Deal Size Range" } },
     },
   };
 
-  return (
-    <Bar data={data} options={options} />
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-gray-600">Loading deal size data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-red-600">{error}</div>
+      </div>
+    );
+  }
+
+  if (!chartData) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-gray-600">No data available</div>
+      </div>
+    );
+  }
+
+  return <Bar data={chartData} options={options} />;
 };
 
 export default TypicalDealSize;

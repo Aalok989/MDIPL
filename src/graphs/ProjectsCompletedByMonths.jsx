@@ -11,6 +11,7 @@ import {
   Filler,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import useResizeKey from "../hooks/useResizeKey";
 
 ChartJS.register(
   CategoryScale,
@@ -24,6 +25,7 @@ ChartJS.register(
 );
 
 const ProjectsCompletedByMonths = () => {
+  const resizeKey = useResizeKey();
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -66,11 +68,12 @@ const ProjectsCompletedByMonths = () => {
       },
       title: {
         display: true,
-        text: "15. Projects Completed per Month (Area)",
+        text: "Projects Completed per Month (Area)",
         font: {
           size: 18,
           weight: "bold",
         },
+        align: "start",
       },
       datalabels: {
         display: false,

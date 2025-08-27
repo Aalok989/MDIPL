@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Plot from 'react-plotly.js';
+import { getApiUrl } from '../config/api';
 
 const GeoMap = () => {
   const [geojson, setGeojson] = useState(null);
   const [points, setPoints] = useState(null);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [mapConfig, setMapConfig] = useState({ center: { lat: 22.5937, lon: 78.9629 }, zoom: 4 });
 
   const CITY_COORDS = useMemo(() => ({
     'FARIDABAD': { lat: 28.4089, lon: 77.3178 },
@@ -39,28 +42,47 @@ const GeoMap = () => {
   }, [CITY_COORDS]);
 
   useEffect(() => {
-    const base = [
-      { Name: 'ABC INDUSTRIES', Type: 'Customer', Value: 16707000, LocationStr: 'DELHI' },
-      { Name: 'OMEGA SUPPLIERS', Type: 'Supplier', Value: 8450000, LocationStr: 'MUMBAI' },
-      { Name: 'PHOENIX PROJECT', Type: 'Project', Value: 3920000, LocationStr: 'BANGALORE' },
-      { Name: 'DELTA FOODS', Type: 'Customer', Value: 2560000, LocationStr: 'PUNE' },
-      { Name: 'NOVA STEEL', Type: 'Supplier', Value: 4780000, LocationStr: 'AHMEDABAD' },
-      { Name: 'SKYLINE TOWERS', Type: 'Project', Value: 5200000, LocationStr: 'NOIDA' },
-      { Name: 'EASTERN TRADERS', Type: 'Customer', Value: 2100000, LocationStr: 'KOLKATA' },
-      { Name: 'COASTAL BUILD', Type: 'Project', Value: 3100000, LocationStr: 'CHENNAI' },
-      { Name: 'RIVER SUPPLY', Type: 'Supplier', Value: 1450000, LocationStr: 'VAPI' },
-      { Name: 'HIGHLAND SERVICES', Type: 'Supplier', Value: 1950000, LocationStr: 'JAMMU' },
-      { Name: 'SUNSHINE POWER', Type: 'Project', Value: 2750000, LocationStr: 'RAIPUR' },
-      { Name: 'URBAN LIVIN', Type: 'Customer', Value: 2300000, LocationStr: 'GURUGRAM' },
-    ];
-    setPoints(base.map(r => ({ ...r, ...geocodeRecord(r) })));
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch(getApiUrl('GEOSPATIAL_ANALYSIS'));
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const response = await res.json();
+
+        if (response.center && response.zoom) {
+          setMapConfig({ center: response.center, zoom: response.zoom });
+        }
+
+        if (response.points && Array.isArray(response.points)) {
+          const processedPoints = response.points.map(point => ({
+            ...point,
+            ...geocodeRecord(point)
+          }));
+          setPoints(processedPoints);
+        } else {
+          throw new Error('Unexpected API response shape');
+        }
+      } catch (err) {
+        console.error('Failed to fetch geospatial data:', err);
+        setError(err?.message || 'Failed to load');
+        setPoints(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [geocodeRecord]);
 
   useEffect(() => {
     fetch('/india_states.json')
-      .then(res => res.ok ? res.json() : Promise.reject())
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('GeoJSON not found')))
       .then(setGeojson)
-      .catch(() => setError('India states GeoJSON not found in /public'));
+      .catch((e) => {
+        console.warn('India states GeoJSON not found in /public. The map will render without state boundaries.', e)
+        setGeojson(null)
+      });
   }, []);
 
   const layers = [];
@@ -81,12 +103,13 @@ const GeoMap = () => {
 
   if (points) {
     const typeToColor = { Customer: 'dodgerblue', Supplier: 'gold', Project: 'magenta' };
+    const typeToSymbol = { Customer: 'square', Supplier: 'circle', Project: 'star' };
     const grouped = points.reduce((acc, p) => {
       if (!acc[p.Type]) acc[p.Type] = { lat: [], lon: [], text: [], size: [] };
       acc[p.Type].lat.push(p.lat);
       acc[p.Type].lon.push(p.lon);
       acc[p.Type].text.push(`${p.Name} — ₹${p.Value.toLocaleString('en-IN')}`);
-      acc[p.Type].size.push(Math.max(6, Math.min(40, Math.sqrt(p.Value) * 0.6)));
+      acc[p.Type].size.push(Math.max(2, Math.min(12, Math.sqrt(p.Value) * 0.2)));
       return acc;
     }, {});
     Object.entries(grouped).forEach(([key, g]) => {
@@ -98,27 +121,47 @@ const GeoMap = () => {
         lon: g.lon,
         text: g.text,
         hovertemplate: '<b>%{text}</b><extra></extra>',
-        marker: { size: g.size, color: typeToColor[key], line: { width: 1, color: '#fff' } }
+        marker: { size: g.size, color: typeToColor[key], symbol: typeToSymbol[key] || 'circle', line: { width: 1, color: '#fff' } }
       });
     });
   }
 
+  // Compute tight bounds from points to minimize empty top/bottom space
+  const bounds = useMemo(() => {
+    if (!points || !points.length) return null;
+    const lats = points.map(p => p.lat).filter(v => typeof v === 'number');
+    const lons = points.map(p => p.lon).filter(v => typeof v === 'number');
+    if (!lats.length || !lons.length) return null;
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLon = Math.min(...lons);
+    const maxLon = Math.max(...lons);
+    const latPad = (maxLat - minLat) * 0.1 || 2;
+    const lonPad = (maxLon - minLon) * 0.1 || 2;
+    return {
+      latRange: [minLat - latPad, maxLat + latPad],
+      lonRange: [minLon - lonPad, maxLon + lonPad],
+    };
+  }, [points]);
+
   const layout = {
     margin: { l: 0, r: 0, t: 0, b: 0 },
     autosize: true,
-    paper_bgcolor: '#fff',
-plot_bgcolor: '#fff',
+    paper_bgcolor: 'rgba(255,255,255,0)',
+    plot_bgcolor: 'rgba(255,255,255,0)',
     geo: {
       projection: { type: 'mercator' },
-      fitbounds: 'locations',
+      fitbounds: bounds ? false : 'locations',
       showcountries: true,
       countrycolor: '#ccc',
       showland: true,
       landcolor: '#f9fafb',
       showframe: false,
       showcoastlines: false,
-      // domain slightly beyond to eliminate leftover gaps:
-      domain: { x: [-0.01, 1.01], y: [0, 1] }
+      center: mapConfig.center,
+      domain: { x: [0, 1], y: [0, 1] },
+      lonaxis: bounds ? { range: bounds.lonRange } : undefined,
+      lataxis: bounds ? { range: bounds.latRange } : undefined,
     },
     legend: {
       orientation: 'h',
@@ -133,15 +176,33 @@ plot_bgcolor: '#fff',
     }
   };
 
+  if (loading) {
+    return (
+      <div className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center bg-white">
+        <div className="text-lg text-gray-600">Loading geospatial data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center bg-white">
+        <div className="text-lg text-red-600">{error}</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full h-[350px] md:h-[420px] rounded-2xl overflow-hidden">
-      <Plot
-        data={layers}
-        layout={layout}
-        style={{ width: '100%', height: '100%', padding: 0, margin: 0 }}
-        config={{ responsive: true, displayModeBar: false }}
-        useResizeHandler
-      />
+    <div className="relative h-full -m-4">
+      <div className="absolute inset-0">
+        <Plot
+          data={layers}
+          layout={layout}
+          style={{ width: '100%', height: '100%', padding: 0, margin: 0 }}
+          config={{ responsive: true, displayModeBar: false }}
+          useResizeHandler
+        />
+      </div>
     </div>
   );
 };

@@ -10,11 +10,13 @@ import {
   Legend,
 } from "chart.js";
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+import useResizeKey from "../hooks/useResizeKey";
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
 const DayOfWeekSalesChart = () => {
+  const resizeKey = useResizeKey();
   // 🔹 Hardcoded sales data by day of week
   const dayOfWeekSales = {
     Monday: 5000,
@@ -51,6 +53,9 @@ const DayOfWeekSalesChart = () => {
         display: true,
         text: "Weekly Rhythm: Total Sales by Day of the Week",
         font: { size: 18 },
+        align: 'start',
+        color: '#1f2937',
+        padding: { top: 6, bottom: 10 },
       },
       datalabels: {
         color: '#ffffff',

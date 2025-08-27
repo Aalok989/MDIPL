@@ -23,15 +23,22 @@ export const API_CONFIG = {
     CUMULATIVE_SPEND_GROWTH: '/api/plot-cumulative-spend-growth',
     SPEND_AMOUNT_DISTRIBUTION: '/api/plot-spend-amount-distribution',
     PROJECTS_PER_MONTH_AREA: '/api/plot_projects_per_month_area',
-    TOTAL_SALES_PER_MONTH: '/api/plot-total-sales-per-month',
+    TOTAL_SALES_PER_MONTH: '/api/chart_monthly_sales',
     TOP_SUPPLIERS: '/api/chart_top_suppliers',
     TOP_CUSTOMERS: '/api/chart_top_customers',
     PROJECT_PROFITABILITY: '/api/chart_project_profitability',
+    CUSTOMER_HEALTH: '/api/chart_customer_health',
     CUSTOMER_LOYALTY: '/api/chart_customer_loyalty',
     PROJECT_EFFICIENCY: '/api/chart_project_efficiency',
+    REVENUE_FORECAST: '/api/chart_revenue_forecast',
     VALUE_CHAIN: '/api/value_chain',
     RISK_ANALYSIS: '/api/risk_analysis',
     PROJECT_CLUSTERS: '/api/project_clusters',
+    CUSTOMER_VALUE_MATRIX: '/api/chart_customer_value_matrix',
+    DEAL_SIZE_DISTRIBUTION: '/api/chart_deal_size_distribution',
+    SUCCESS_BLUEPRINT: '/api/chart_success_blueprint',
+    GEOSPATIAL_ANALYSIS: '/api/geospatial_analysis',
+
   }
 
 };
