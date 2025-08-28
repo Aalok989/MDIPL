@@ -89,8 +89,22 @@ export default function LoyalLegion({ inModal = false, n }) {
       {
         label: "Number of Bills",
         data: billCounts.map(b => b || 0),
-        backgroundColor: "#932F67",
-        borderColor: "#932F67",
+        backgroundColor: billCounts.map((_, index) => {
+          // Create a gradient from deep royal purple to soft lavender
+          const ratio = index / (customers.length - 1);
+          const r = Math.round(72 + (147 - 72) * ratio);    // 72 to 147 (deep royal purple to lavender)
+          const g = Math.round(61 + (112 - 61) * ratio);    // 61 to 112
+          const b = Math.round(139 + (219 - 139) * ratio);  // 139 to 219
+          return `rgb(${r}, ${g}, ${b})`;
+        }),
+        borderColor: billCounts.map((_, index) => {
+          // Create a gradient from deep royal purple to soft lavender
+          const ratio = index / (customers.length - 1);
+          const r = Math.round(72 + (147 - 72) * ratio);    // 72 to 147 (deep royal purple to lavender)
+          const g = Math.round(61 + (112 - 61) * ratio);    // 61 to 112
+          const b = Math.round(139 + (219 - 139) * ratio);  // 139 to 219
+          return `rgb(${r}, ${g}, ${b})`;
+        }),
         borderWidth: 1,
         borderRadius: 6,
       },

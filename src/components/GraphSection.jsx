@@ -62,7 +62,7 @@ const GraphSection = () => {
   }, []);
   const charts = [
     { key: 'spend-by-season', Component: SpendBySeasonChart },
-    { key: 'top-vendors', Component: TopVendorsChart },
+    // { key: 'top-vendors', Component: TopVendorsChart },
     { key: 'projects-completed-by-months', Component: ProjectsCompletedByMonths },
     { key: 'total-sales-per-month', Component: TotalSalesPerMonth },
     { key: 'day-of-week-sales', Component: DayOfWeekSalesChart },

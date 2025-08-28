@@ -46,8 +46,22 @@ const TypicalDealSize = ({ inModal = false }) => {
             {
               label: "Number of Deals",
               data: uniqueData.slice(0, limit),
-              backgroundColor: "rgba(59, 130, 246, 0.7)", // Tailwind blue-500
-              borderColor: "rgb(59, 130, 246)",
+              backgroundColor: uniqueData.slice(0, limit).map((_, index) => {
+                // Create a gradient from light green to emerald green
+                const ratio = index / (limit - 1);
+                const r = Math.round(144 + (0 - 144) * ratio);     // 144 to 0 (light green to emerald)
+                const g = Math.round(238 + (128 - 238) * ratio);   // 238 to 128
+                const b = Math.round(144 + (0 - 144) * ratio);     // 144 to 0
+                return `rgb(${r}, ${g}, ${b})`;
+              }),
+              borderColor: uniqueData.slice(0, limit).map((_, index) => {
+                // Create a gradient from light green to emerald green
+                const ratio = index / (limit - 1);
+                const r = Math.round(144 + (0 - 144) * ratio);     // 144 to 0 (light green to emerald)
+                const g = Math.round(238 + (128 - 238) * ratio);   // 238 to 128
+                const b = Math.round(144 + (0 - 144) * ratio);     // 144 to 0
+                return `rgb(${r}, ${g}, ${b})`;
+              }),
               borderWidth: 1,
               borderRadius: 0, // flat bars for histogram look
               barPercentage: 1.0,
@@ -129,7 +143,7 @@ const TypicalDealSize = ({ inModal = false }) => {
   }
 
   return (
-    <div className="relative w-full" style={{ height: chartHeight }}>
+    <div className={`relative w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
       {/* Quick select filter - only in modal */}
       {inModal && (
         <div className="absolute top-1 right-12 z-20">
@@ -148,7 +162,9 @@ const TypicalDealSize = ({ inModal = false }) => {
         </div>
       )}
       
-      <Bar ref={chartRef} data={chartData} options={options} />
+      <div className={`w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
+        <Bar ref={chartRef} data={chartData} options={options} />
+      </div>
     </div>
   );
 };

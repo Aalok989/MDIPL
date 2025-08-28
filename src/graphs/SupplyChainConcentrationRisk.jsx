@@ -1,8 +1,26 @@
 // ConcentrationRisk.jsx
-import React from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Plot from "react-plotly.js";
 
-const SupplyChainConcentrationRisk = () => {
+const SupplyChainConcentrationRisk = ({ inModal = false }) => {
+  const [chartData, setChartData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Chart height for responsive layout
+  const chartHeight = useMemo(() => {
+    return inModal ? 400 : 400; // Same height for both views like other charts
+  }, [inModal]);
+
+  // Ensure hooks order is stable across renders: define layout hooks before any early returns
+  const chartRef = useRef(null);
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) {
+      chart.resize();
+    }
+  }, [chartHeight, chartData]);
+
   // Demo data (replace with API / Python output)
   const supplierDiversity = [
     { customer: "Alice Corp", uniqueSuppliers: 2 },
@@ -14,33 +32,46 @@ const SupplyChainConcentrationRisk = () => {
   ];
 
   return (
-    <>
-      <h2 className="text-lg font-semibold mb-3">
-        Concentration Risk: Supplier Diversity for Top Customers
-      </h2>
-      <Plot
-        data={[
-          {
-            type: "bar",
-            orientation: "h",
-            y: supplierDiversity.map((d) => d.customer),
-            x: supplierDiversity.map((d) => d.uniqueSuppliers),
-            marker: {
-              color: "rgba(59,130,246,0.7)", // Tailwind blue-500 with opacity
-              line: { color: "rgba(59,130,246,1)", width: 1 },
-            },
-          },
-        ]}
-        layout={{
-          margin: { l: 120, r: 30, t: 40, b: 40 },
-          height: 450,
-          xaxis: { title: "Number of Unique Suppliers" },
-          yaxis: { title: "Customer", categoryorder: "total ascending" },
-        }}
-        style={{ width: "100%", height: "450px" }}
-        config={{ responsive: true }}
-      />
-    </>
+    <div className="w-full h-full flex flex-col">
+      <h2 className="text-lg font-semibold mb-3">Supply Chain Concentration Risk</h2>
+      {loading ? (
+        <div className="text-center text-gray-500">Loading risk data...</div>
+      ) : error ? (
+        <div className="text-center text-red-500">{error}</div>
+      ) : (
+        <div className="flex-1 min-h-0">
+          <Plot
+            data={[
+              {
+                type: "scatter",
+                mode: "markers",
+                x: chartData.x,
+                y: chartData.y,
+                text: chartData.text,
+                marker: {
+                  size: chartData.size,
+                  color: chartData.color,
+                  colorscale: "Viridis",
+                  showscale: true,
+                  colorbar: { title: "Risk Level" }
+                },
+                hovertemplate: "%{text}<br>Risk: %{y}<br>Concentration: %{x}<extra></extra>"
+              }
+            ]}
+            layout={{
+              title: "Supply Chain Risk vs Concentration",
+              xaxis: { title: "Concentration (%)" },
+              yaxis: { title: "Risk Score" },
+              height: undefined, // Let Plotly handle height responsively
+              autosize: true,
+            }}
+            style={{ width: "100%", height: "100%" }}
+            config={{ responsive: true }}
+            useResizeHandler={true}
+          />
+        </div>
+      )}
+    </div>
   );
 };
 

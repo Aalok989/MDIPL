@@ -1,5 +1,5 @@
 // RevenueForecastChart.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -16,14 +16,27 @@ import useResizeKey from '../hooks/useResizeKey';
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
 
-export default function RevenueForecastChart() {
-  const resizeKey = useResizeKey();
+const RevenueForecast = ({ inModal = false }) => {
   const [labels, setLabels] = useState([]);
   const [forecast, setForecast] = useState([]);
   const [lower, setLower] = useState([]);
   const [upper, setUpper] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Chart height for responsive layout
+  const chartHeight = useMemo(() => {
+    return inModal ? 400 : 400; // Same height for both views like other charts
+  }, [inModal]);
+
+  // Ensure hooks order is stable across renders: define layout hooks before any early returns
+  const chartRef = useRef(null);
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) {
+      chart.resize();
+    }
+  }, [chartHeight, labels.length]);
 
   useEffect(() => {
     const fetchForecast = async () => {
@@ -111,17 +124,29 @@ export default function RevenueForecastChart() {
   };
 
   return (
-    <>
+    <div className="w-full h-full flex flex-col">
       <h2 className="text-lg font-semibold text-gray-800 mb-4">
-        The Oracle’s Vision: 12-Month Revenue Forecast
+        The Oracle's Vision: 12-Month Revenue Forecast
       </h2>
       {loading ? (
         <div className="text-gray-500">Loading forecast…</div>
       ) : labels.length ? (
-        <Line data={data} options={options} />
+        <div className="flex-1 min-h-0">
+          <Line 
+            ref={chartRef}
+            data={data} 
+            options={{
+              ...options,
+              responsive: true,
+              maintainAspectRatio: false,
+            }}
+          />
+        </div>
       ) : (
         <div className="text-red-500">{error || 'No forecast data available.'}</div>
       )}
-    </>
+    </div>
   );
 }
+
+export default RevenueForecast;

@@ -157,7 +157,7 @@ const TotalSalesPerMonth = ({ inModal = false }) => {
   if (error) return <p className="text-red-500">Error: {error}</p>;
 
   return (
-    <div className="relative w-full" style={{ height: chartHeight }}>
+    <div className={`relative w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
       {/* Quick select filter - only in modal */}
       {inModal && (
         <div className="absolute top-1 right-12 z-20">
@@ -174,12 +174,14 @@ const TotalSalesPerMonth = ({ inModal = false }) => {
         </div>
       )}
       
-      <Line 
-        ref={chartRef}
-        key={`${resizeKey}-${filteredData?.labels?.length || 0}`} 
-        data={filteredData || chartData} 
-        options={options} 
-      />
+      <div className={`w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
+        <Line 
+          ref={chartRef}
+          key={`${resizeKey}-${filteredData?.labels?.length || 0}`} 
+          data={filteredData || chartData} 
+          options={options} 
+        />
+      </div>
     </div>
   );
 };

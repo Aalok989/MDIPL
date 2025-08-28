@@ -141,8 +141,22 @@ export default function SuppliersByTotalSpend({ inModal = false }) {
       {
         label: "Total Spend",
         data: filteredSuppliers.map((s) => s?.bill_total || 0),
-        backgroundColor: "#3E0703",
-        borderColor: "#3E0703",
+        backgroundColor: filteredSuppliers.map((_, index) => {
+          // Create a gradient from navy to light blue
+          const ratio = index / (filteredSuppliers.length - 1);
+          const r = Math.round(0 + (173 - 0) * ratio);      // 0 to 173 (navy to light blue)
+          const g = Math.round(0 + (216 - 0) * ratio);      // 0 to 216
+          const b = Math.round(128 + (230 - 128) * ratio);  // 128 to 230
+          return `rgb(${r}, ${g}, ${b})`;
+        }),
+        borderColor: filteredSuppliers.map((_, index) => {
+          // Create a gradient from navy to light blue
+          const ratio = index / (filteredSuppliers.length - 1);
+          const r = Math.round(0 + (173 - 0) * ratio);      // 0 to 173 (navy to light blue)
+          const g = Math.round(0 + (216 - 0) * ratio);      // 0 to 216
+          const b = Math.round(128 + (230 - 128) * ratio);  // 128 to 230
+          return `rgb(${r}, ${g}, ${b})`;
+        }),
         borderWidth: 1,
         borderRadius: 6,
       },
@@ -244,7 +258,7 @@ export default function SuppliersByTotalSpend({ inModal = false }) {
   }
 
   return (
-    <div className="relative w-full" style={{ height: chartHeight }}>
+    <div className={`relative w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
       {/* Quick select filter - only in modal */}
       {inModal && (
         <div className="absolute top-1 right-12 z-20">
@@ -264,12 +278,14 @@ export default function SuppliersByTotalSpend({ inModal = false }) {
         </div>
       )}
       
-      <Bar 
-        ref={chartRef}
-        key={`suppliers-${filteredSuppliers.length}`}
-        data={chartData} 
-        options={options} 
-      />
+      <div className={`w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
+        <Bar 
+          ref={chartRef}
+          key={`suppliers-${filteredSuppliers.length}`}
+          data={chartData} 
+          options={options} 
+        />
+      </div>
     </div>
   );
 };

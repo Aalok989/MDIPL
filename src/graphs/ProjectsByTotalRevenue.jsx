@@ -91,8 +91,44 @@ export default function ProjectsByTotalRevenue({ inModal = false, n }) {
       {
         label: 'Total Revenue',
         data: revenues.map((r) => r || 0),
-        backgroundColor: '#991B1B',
-        borderColor: '#991B1B',
+        backgroundColor: revenues.map((_, index) => {
+          // Create a gradient from golden to yellow to gray
+          const ratio = index / (projects.length - 1);
+          if (ratio <= 0.5) {
+            // First half: golden to yellow
+            const goldenRatio = ratio * 2; // 0 to 1
+            const r = Math.round(218 + (255 - 218) * goldenRatio);    // 218 to 255 (golden to yellow)
+            const g = Math.round(165 + (255 - 165) * goldenRatio);    // 165 to 255
+            const b = Math.round(32 + (0 - 32) * goldenRatio);       // 32 to 0
+            return `rgb(${r}, ${g}, ${b})`;
+          } else {
+            // Second half: yellow to gray
+            const grayRatio = (ratio - 0.5) * 2; // 0 to 1
+            const r = Math.round(255 + (128 - 255) * grayRatio);      // 255 to 128 (yellow to gray)
+            const g = Math.round(255 + (128 - 255) * grayRatio);      // 255 to 128
+            const b = Math.round(0 + (128 - 0) * grayRatio);         // 0 to 128
+            return `rgb(${r}, ${g}, ${b})`;
+          }
+        }),
+        borderColor: revenues.map((_, index) => {
+          // Create a gradient from golden to yellow to gray
+          const ratio = index / (projects.length - 1);
+          if (ratio <= 0.5) {
+            // First half: golden to yellow
+            const goldenRatio = ratio * 2; // 0 to 1
+            const r = Math.round(218 + (255 - 218) * goldenRatio);    // 218 to 255 (golden to yellow)
+            const g = Math.round(165 + (255 - 165) * goldenRatio);    // 165 to 255
+            const b = Math.round(32 + (0 - 32) * goldenRatio);       // 32 to 0
+            return `rgb(${r}, ${g}, ${b})`;
+          } else {
+            // Second half: yellow to gray
+            const grayRatio = (ratio - 0.5) * 2; // 0 to 1
+            const r = Math.round(255 + (128 - 255) * grayRatio);      // 255 to 128 (yellow to gray)
+            const g = Math.round(255 + (128 - 255) * grayRatio);      // 255 to 128
+            const b = Math.round(0 + (128 - 0) * grayRatio);         // 0 to 128
+            return `rgb(${r}, ${g}, ${b})`;
+          }
+        }),
         borderWidth: 1,
         borderRadius: 6,
       },

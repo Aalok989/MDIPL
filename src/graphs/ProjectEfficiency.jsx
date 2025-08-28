@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Plot from "react-plotly.js";
 import { getApiUrl } from "../config/api";
 import useResizeKey from "../hooks/useResizeKey";
 
-const ProjectEfficiency = () => {
+const ProjectEfficiency = ({ inModal = false }) => {
   const resizeKey = useResizeKey(200);
   const [projectData, setProjectData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +17,20 @@ const ProjectEfficiency = () => {
     { project_name: "Project Delta", duration_days: 60, total_revenue: 200000, revenue_per_day: 3333 },
     { project_name: "Project Epsilon", duration_days: 15, total_revenue: 75000, revenue_per_day: 5000 },
   ];
+
+  // Chart height for responsive layout
+  const chartHeight = useMemo(() => {
+    return inModal ? 400 : 400; // Same height for both views like other charts
+  }, [inModal]);
+
+  // Ensure hooks order is stable across renders: define layout hooks before any early returns
+  const chartRef = useRef(null);
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) {
+      chart.resize();
+    }
+  }, [chartHeight, projectData.length]);
 
   useEffect(() => {
     const fetchProjectEfficiency = async () => {
@@ -108,9 +122,9 @@ const ProjectEfficiency = () => {
       <p className="text-xs text-gray-500 px-4 pb-3">Revenue per day across project duration</p>
 
       {/* Chart */}
-      <div className="flex-1 px-2 pb-2">
+      <div className="flex-1 px-2 pb-2 min-h-0">
         <Plot
-          key={resizeKey}
+          key={`${resizeKey}-${projectData.length}`}
           data={[
             {
               x: projectData.map((d) => d.duration_days),
@@ -152,9 +166,10 @@ const ProjectEfficiency = () => {
               tickformat: "~s"
             },
             margin: { l: 50, r: 30, t: 30, b: 50 },
+            height: inModal ? undefined : 400, // Fixed height for regular view, responsive for modal
             autosize: true,
           }}
-          style={{ width: "100%", height: "100%" }}
+          style={{ width: "100%", height: inModal ? "100%" : "400px" }}
           config={{ responsive: true, displayModeBar: false }}
           useResizeHandler
         />

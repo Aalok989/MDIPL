@@ -1,5 +1,5 @@
 // ProjectPersonalitiesScatter.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Scatter } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -26,11 +26,27 @@ function abbreviateLabel(raw, maxLength = 12) {
   return out + '…';
 }
 
-export default function TheProjectPortfolio() {
+export default function TheProjectPortfolio({ inModal = false }) {
   const { formatAxisValue } = useLabelAbbreviation();
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Filter state for modal view
+  const [nValue, setNValue] = useState('all'); // Default to show all projects
+  
+  // Ensure hooks order is stable across renders: define layout hooks before any early returns
+  const chartRef = useRef(null);
+  const chartHeight = useMemo(() => {
+    return inModal ? 400 : 400; // Same height for both views like other charts
+  }, [inModal]);
+  
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) {
+      chart.resize();
+    }
+  }, [chartHeight, points.length]);
 
   const clusterColors = ["#3B82F6", "#EF4444", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899"]; // extend if needed
 
@@ -60,6 +76,17 @@ export default function TheProjectPortfolio() {
     fetchClusters();
   }, []);
 
+  // Apply filter to data
+  const filteredPoints = useMemo(() => {
+    if (!inModal || nValue === 'all') {
+      return points;
+    }
+    
+    // For project portfolio, show top N projects by revenue
+    const sortedPoints = [...points].sort((a, b) => b.y - a.y);
+    return sortedPoints.slice(0, nValue);
+  }, [points, nValue, inModal]);
+
   if (loading) {
     return (
       <div className="p-4 bg-white rounded-2xl shadow-md w-full max-w-3xl mx-auto text-center text-gray-500">Loading project clusters...</div>
@@ -76,8 +103,8 @@ export default function TheProjectPortfolio() {
     datasets: [
       {
         label: "Projects",
-        data: points.map((p) => ({ x: p.x, y: p.y, name: p.name, cluster: p.cluster })),
-        backgroundColor: points.map((p) => clusterColors[(Number(p.cluster) || 0) % clusterColors.length]),
+        data: filteredPoints.map((p) => ({ x: p.x, y: p.y, name: p.name, cluster: p.cluster })),
+        backgroundColor: filteredPoints.map((p) => clusterColors[(Number(p.cluster) || 0) % clusterColors.length]),
         pointRadius: 6,
       },
     ],
@@ -85,8 +112,19 @@ export default function TheProjectPortfolio() {
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false, // Same as other charts
     plugins: {
       legend: { display: false },
+      title: {
+        display: true,
+        text: inModal && nValue !== 'all'
+          ? `Project Portfolio - Top ${nValue} Projects`
+          : "The Project Portfolio",
+        font: { size: 18 },
+        align: 'start',
+        color: '#1f2937',
+        padding: { top: 6, bottom: 10 },
+      },
       tooltip: {
         callbacks: {
           label: (ctx) => {
@@ -120,9 +158,32 @@ export default function TheProjectPortfolio() {
   };
 
   return (
-    <>
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">The Project Portfolio</h2>
-      <Scatter data={chartData} options={options} />
-    </>
+    <div className={`relative w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
+      {/* Quick select filter - only in modal */}
+      {inModal && (
+        <div className="absolute top-1 right-12 z-20">
+          <select
+            value={nValue}
+            onChange={(e) => setNValue(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
+            className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
+          >
+            <option value="all">All Projects</option>
+            <option value={20}>Top 20</option>
+            <option value={15}>Top 15</option>
+            <option value={10}>Top 10</option>
+            <option value={5}>Top 5</option>
+          </select>
+        </div>
+      )}
+      
+      <div className={`w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
+        <Scatter 
+          ref={chartRef}
+          key={`project-portfolio-${filteredPoints.length}`}
+          data={chartData} 
+          options={options} 
+        />
+      </div>
+    </div>
   );
 };

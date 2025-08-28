@@ -115,8 +115,58 @@ export default function CustomersByTotalRevenue({ inModal = false }) {
       {
         label: "Total Revenue",
         data: sortedCustomers.map((c) => c?.bill_total || 0),
-        backgroundColor: "#3338A0",
-        borderColor: "#3338A0",
+        backgroundColor: sortedCustomers.map((_, index) => {
+          // Create a gradient from turquoise to aqua to deep sea blue to teal
+          const ratio = index / (sortedCustomers.length - 1);
+          if (ratio <= 0.33) {
+            // First third: turquoise to aqua
+            const turquoiseRatio = ratio / 0.33; // 0 to 1
+            const r = Math.round(64 + (0 - 64) * turquoiseRatio);      // 64 to 0 (turquoise to aqua)
+            const g = Math.round(224 + (255 - 224) * turquoiseRatio);  // 224 to 255
+            const b = Math.round(208 + (255 - 208) * turquoiseRatio);  // 208 to 255
+            return `rgb(${r}, ${g}, ${b})`;
+          } else if (ratio <= 0.66) {
+            // Second third: aqua to deep sea blue
+            const aquaRatio = (ratio - 0.33) / 0.33; // 0 to 1
+            const r = Math.round(0 + (0 - 0) * aquaRatio);            // 0 to 0 (aqua to deep sea blue)
+            const g = Math.round(255 + (105 - 255) * aquaRatio);       // 255 to 105
+            const b = Math.round(255 + (148 - 255) * aquaRatio);       // 255 to 148
+            return `rgb(${r}, ${g}, ${b})`;
+          } else {
+            // Last third: deep sea blue to teal
+            const seaRatio = (ratio - 0.66) / 0.34; // 0 to 1
+            const r = Math.round(0 + (0 - 0) * seaRatio);             // 0 to 0 (deep sea blue to teal)
+            const g = Math.round(105 + (128 - 105) * seaRatio);        // 105 to 128
+            const b = Math.round(148 + (128 - 148) * seaRatio);        // 148 to 128
+            return `rgb(${r}, ${g}, ${b})`;
+          }
+        }),
+        borderColor: sortedCustomers.map((_, index) => {
+          // Create a gradient from turquoise to aqua to deep sea blue to teal
+          const ratio = index / (sortedCustomers.length - 1);
+          if (ratio <= 0.33) {
+            // First third: turquoise to aqua
+            const turquoiseRatio = ratio / 0.33; // 0 to 1
+            const r = Math.round(64 + (0 - 64) * turquoiseRatio);      // 64 to 0 (turquoise to aqua)
+            const g = Math.round(224 + (255 - 224) * turquoiseRatio);  // 224 to 255
+            const b = Math.round(208 + (255 - 208) * turquoiseRatio);  // 208 to 255
+            return `rgb(${r}, ${g}, ${b})`;
+          } else if (ratio <= 0.66) {
+            // Second third: aqua to deep sea blue
+            const aquaRatio = (ratio - 0.33) / 0.33; // 0 to 1
+            const r = Math.round(0 + (0 - 0) * aquaRatio);            // 0 to 0 (aqua to deep sea blue)
+            const g = Math.round(255 + (105 - 255) * aquaRatio);       // 255 to 105
+            const b = Math.round(255 + (148 - 255) * aquaRatio);       // 255 to 148
+            return `rgb(${r}, ${g}, ${b})`;
+          } else {
+            // Last third: deep sea blue to teal
+            const seaRatio = (ratio - 0.66) / 0.34; // 0 to 1
+            const r = Math.round(0 + (0 - 0) * seaRatio);             // 0 to 0 (deep sea blue to teal)
+            const g = Math.round(105 + (128 - 105) * seaRatio);        // 105 to 128
+            const b = Math.round(148 + (128 - 148) * seaRatio);        // 148 to 128
+            return `rgb(${r}, ${g}, ${b})`;
+          }
+        }),
         borderWidth: 1,
         borderRadius: 6,
       },
@@ -236,7 +286,7 @@ export default function CustomersByTotalRevenue({ inModal = false }) {
   }
 
   return (
-    <div className="relative w-full" style={{ height: chartHeight }}>
+    <div className={`relative w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
       {/* Quick select filter - only in modal */}
       {inModal && (
         <div className="absolute top-1 right-12 z-20">
@@ -261,7 +311,9 @@ export default function CustomersByTotalRevenue({ inModal = false }) {
         </div>
       )}
       
-      <Bar ref={chartRef} data={data} options={options} />
+      <div className={`w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
+        <Bar ref={chartRef} data={data} options={options} />
+      </div>
     </div>
   );
 };

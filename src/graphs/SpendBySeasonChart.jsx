@@ -12,10 +12,13 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 // Register components
 ChartJS.register(ArcElement, Tooltip, Legend, Title, ChartDataLabels);
 
-const SpendBySeasonChart = () => {
+const SpendBySeasonChart = ({ inModal = false }) => {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Chart height for responsive layout
+  const chartHeight = inModal ? 400 : 400;
 
   const fetchChartData = useCallback(async () => {
     try {
@@ -153,64 +156,66 @@ const SpendBySeasonChart = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col p-4">
+    <div className="w-full h-full flex flex-col">
       {/* Title & Subtitle */}
-      <h3 className="text-lg font-semibold text-gray-800 mb-1">Spend by Season</h3>
+      <h3 className="text-lg font-semibold text-gray-800 mb-3 px-4">Spend by Season</h3>
 
       {/* Chart & Summary */}
-      <div className="flex flex-col md:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 px-4">
         {/* Left: Pie Chart */}
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-40 h-40">
+        <div className="flex-1 flex items-center justify-center min-h-0">
+          <div className="w-full h-full max-w-xs max-h-xs">
             <Pie data={data} options={options} />
           </div>
         </div>
 
         {/* Right: Metrics */}
-        <div className="flex-1 flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-2 text-center">
-            <div>
+        <div className="flex-1 flex flex-col gap-3 min-w-0">
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div className="bg-gray-50 p-2 rounded">
               <p className="text-xs text-gray-500">Total Spend</p>
               <p className="text-sm font-semibold text-green-700">{formatCurrency(totalSpend)}</p>
             </div>
-            <div>
+            <div className="bg-gray-50 p-2 rounded">
               <p className="text-xs text-gray-500">Avg per Season</p>
               <p className="text-sm font-semibold text-blue-700">{formatCurrency(avgPerSeason)}</p>
             </div>
           </div>
 
           {/* Season Breakdown */}
-          <div className="mt-2">
+          <div className="flex-1">
             <h4 className="text-xs font-semibold text-gray-700 mb-2">Season Breakdown</h4>
-            <ul className="space-y-1 text-xs">
+            <div className="space-y-1 text-xs max-h-32 overflow-y-auto">
               {chartData.labels.map((label, i) => {
                 const value = chartData.datasets[0].data[i];
                 const percentage = chartData.percentages?.[label] || 0;
                 return (
-                  <li key={label} className="flex justify-between py-1 px-2 bg-gray-50 rounded">
-                    <span className="font-medium text-gray-800">{label}</span>
-                    <span className="text-gray-600">
+                  <div key={label} className="flex justify-between py-1 px-2 bg-gray-50 rounded">
+                    <span className="font-medium text-gray-800 truncate">{label}</span>
+                    <span className="text-gray-600 ml-2 flex-shrink-0">
                       {formatCurrency(value)} ({percentage.toFixed(1)}%)
                     </span>
-                  </li>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Legend */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {chartData.labels.map((label, i) => (
-          <div key={label} className="flex items-center gap-1">
-            <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ backgroundColor: data.datasets[0].backgroundColor[i] }}
-            ></span>
-            <span className="text-xs text-gray-600">{label}</span>
-          </div>
-        ))}
+      <div className="mt-3 px-4 pb-4">
+        <div className="flex flex-wrap gap-3">
+          {chartData.labels.map((label, i) => (
+            <div key={label} className="flex items-center gap-2">
+              <span
+                className="inline-block w-3 h-3 rounded-sm"
+                style={{ backgroundColor: data.datasets[0].backgroundColor[i] }}
+              ></span>
+              <span className="text-xs text-gray-600">{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

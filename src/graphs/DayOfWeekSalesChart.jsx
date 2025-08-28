@@ -33,6 +33,14 @@ const DayOfWeekSalesChart = ({ inModal = false }) => {
   // Filter state for modal view
   const [nValue, setNValue] = useState(7); // Default to show all 7 days
   
+  // Color array for different bars - same as SupplierDiversityForTopCustomers
+  const barColors = [
+    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+    "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+    "#a6cee3", "#fb9a99", "#fdbf6f", "#cab2d6", "#ff9896",
+    "#f0027f", "#386cb0", "#fdc086", "#beaed4", "#7fc97f"
+  ];
+
   // Ensure hooks order is stable across renders: define layout hooks before any early returns
   const chartRef = useRef(null);
   const chartHeight = useMemo(() => {
@@ -110,8 +118,8 @@ const DayOfWeekSalesChart = ({ inModal = false }) => {
       {
         label: "Total Sales",
         data: filteredData.values,
-        backgroundColor: "#FF714B",
-        borderColor: "#FF714B",
+        backgroundColor: filteredData.labels.map((_, index) => barColors[index % barColors.length]),
+        borderColor: filteredData.labels.map((_, index) => barColors[index % barColors.length]),
         borderWidth: 1,
         borderRadius: 6, // rounded bars
       },
@@ -180,7 +188,7 @@ const DayOfWeekSalesChart = ({ inModal = false }) => {
   if (error) return <p className="text-red-500">Error: {error}</p>;
 
   return (
-    <div className="relative w-full" style={{ height: chartHeight }}>
+    <div className={`relative w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
       {/* Quick select filter - only in modal */}
       {inModal && (
         <div className="absolute top-1 right-12 z-20">
@@ -197,12 +205,14 @@ const DayOfWeekSalesChart = ({ inModal = false }) => {
         </div>
       )}
       
-      <Bar 
-        ref={chartRef}
-        key={`${resizeKey}-${filteredData.labels.length}`} 
-        data={data} 
-        options={options} 
-      />
+      <div className={`w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
+        <Bar 
+          ref={chartRef}
+          key={`${resizeKey}-${filteredData.labels.length}`} 
+          data={data} 
+          options={options} 
+        />
+      </div>
     </div>
   );
 };
