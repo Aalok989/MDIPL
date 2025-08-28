@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -29,11 +29,27 @@ ChartJS.register(
 import { getApiUrl } from "../config/api";
 import useResizeKey from "../hooks/useResizeKey";
 
-const TotalSalesPerMonth = () => {
+const TotalSalesPerMonth = ({ inModal = false }) => {
   const resizeKey = useResizeKey();
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Filter state for modal view
+  const [nValue, setNValue] = useState(12); // Default to show all 12 months
+  
+  // Ensure hooks order is stable across renders: define layout hooks before any early returns
+  const chartRef = useRef(null);
+  const chartHeight = useMemo(() => {
+    return inModal ? 400 : 400; // Same height for both views like other charts
+  }, [inModal]);
+  
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) {
+      chart.resize();
+    }
+  }, [chartHeight, chartData]);
 
   useEffect(() => {
     const fetchSalesData = async () => {
@@ -79,13 +95,35 @@ const TotalSalesPerMonth = () => {
     fetchSalesData();
   }, []);
 
+  // Apply filter to data
+  const filteredData = useMemo(() => {
+    if (!chartData || !inModal || nValue === 12) {
+      return chartData;
+    }
+    
+    // For time series, show last N months
+    const labels = chartData.labels.slice(-nValue);
+    const datasets = chartData.datasets.map(dataset => ({
+      ...dataset,
+      data: dataset.data.slice(-nValue)
+    }));
+    
+    return {
+      labels,
+      datasets
+    };
+  }, [chartData, nValue, inModal]);
+
   const options = {
     responsive: true,
+    maintainAspectRatio: false, // Same as other charts
     plugins: {
       legend: { display: true, position: "top" },
       title: {
         display: true,
-        text: "Business Heartbeat: Total Sales per Month",
+        text: inModal && nValue < 12 
+          ? `Business Heartbeat: Last ${nValue} Months Sales`
+          : "Business Heartbeat: Total Sales per Month",
         font: { size: 18 },
         align: 'start',
         color: '#1f2937',
@@ -118,7 +156,32 @@ const TotalSalesPerMonth = () => {
   if (loading) return <p className="text-gray-500">Loading sales data...</p>;
   if (error) return <p className="text-red-500">Error: {error}</p>;
 
-  return <Line data={chartData} options={options} />;
+  return (
+    <div className="relative w-full" style={{ height: chartHeight }}>
+      {/* Quick select filter - only in modal */}
+      {inModal && (
+        <div className="absolute top-1 right-12 z-20">
+          <select
+            value={nValue}
+            onChange={(e) => setNValue(parseInt(e.target.value, 10))}
+            className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
+          >
+            <option value={12}>All Months</option>
+            <option value={6}>Last 6 Months</option>
+            <option value={3}>Last 3 Months</option>
+            <option value={2}>Last 2 Months</option>
+          </select>
+        </div>
+      )}
+      
+      <Line 
+        ref={chartRef}
+        key={`${resizeKey}-${filteredData?.labels?.length || 0}`} 
+        data={filteredData || chartData} 
+        options={options} 
+      />
+    </div>
+  );
 };
 
 export default TotalSalesPerMonth;

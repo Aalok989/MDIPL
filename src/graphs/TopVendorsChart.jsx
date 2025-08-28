@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -15,11 +15,27 @@ import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
-export default function TopVendorsChart() {
+export default function TopVendorsChart({ inModal = false }) {
   const { abbreviateLabel } = useLabelAbbreviation(10);
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Filter state for modal view
+  const [nValue, setNValue] = useState(5); // Default to show top 5
+  
+  // Ensure hooks order is stable across renders: define layout hooks before any early returns
+  const chartRef = useRef(null);
+  const chartHeight = useMemo(() => {
+    return inModal ? 400 : 400; // Same height for both views like other charts
+  }, [inModal]);
+  
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) {
+      chart.resize();
+    }
+  }, [chartHeight, chartData]);
 
   // Modern fetch function with better error handling
   const fetchChartData = useCallback(async () => {
@@ -46,6 +62,25 @@ export default function TopVendorsChart() {
   useEffect(() => {
     fetchChartData();
   }, [fetchChartData]);
+
+  // Apply filter to data
+  const filteredData = useMemo(() => {
+    if (!chartData || !inModal || nValue === 5) {
+      return chartData;
+    }
+    
+    // For vendors, show top N vendors
+    const labels = chartData.labels.slice(0, nValue);
+    const datasets = chartData.datasets.map(dataset => ({
+      ...dataset,
+      data: dataset.data.slice(0, nValue)
+    }));
+    
+    return {
+      labels,
+      datasets
+    };
+  }, [chartData, nValue, inModal]);
 
   // Loading state component
   if (loading) {
@@ -96,12 +131,12 @@ export default function TopVendorsChart() {
 
   // Prepare chart data with validation
   const data = {
-    labels: chartData.labels || [],
+    labels: (filteredData || chartData).labels || [],
     datasets: [
       {
-        label: chartData.datasets[0]?.label || "Spend (₹ Crores)",
-        data: chartData.datasets[0]?.data || [],
-        backgroundColor: chartData.datasets[0]?.backgroundColor || [
+        label: (filteredData || chartData).datasets[0]?.label || "Spend (₹ Crores)",
+        data: (filteredData || chartData).datasets[0]?.data || [],
+        backgroundColor: (filteredData || chartData).datasets[0]?.backgroundColor || [
           "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"
         ],
         borderRadius: 6,
@@ -112,7 +147,7 @@ export default function TopVendorsChart() {
 
   const options = {
     responsive: true,
-    maintainAspectRatio: false,
+    maintainAspectRatio: false, // Same as other charts
     plugins: {
       legend: {
         position: "top",
@@ -124,7 +159,9 @@ export default function TopVendorsChart() {
       },
       title: {
         display: true,
-        text: "Top 5 Vendors by Spend",
+        text: inModal && nValue !== 5 
+          ? `Top ${nValue} Vendors by Spend`
+          : "Top 5 Vendors by Spend",
         font: {
           size: 16,
           weight: "bold",
@@ -193,8 +230,29 @@ export default function TopVendorsChart() {
   };
 
   return (
-    <div className="w-full h-full relative">
-      <Bar data={data} options={options} />
+    <div className="relative w-full" style={{ height: chartHeight }}>
+      {/* Quick select filter - only in modal */}
+      {inModal && (
+        <div className="absolute top-1 right-12 z-20">
+          <select
+            value={nValue}
+            onChange={(e) => setNValue(parseInt(e.target.value, 10))}
+            className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
+          >
+            <option value={5}>Top 5</option>
+            <option value={3}>Top 3</option>
+            <option value={2}>Top 2</option>
+            <option value={1}>Top 1</option>
+          </select>
+        </div>
+      )}
+      
+      <Bar 
+        ref={chartRef}
+        key={`top-vendors-${filteredData?.labels?.length || 0}`}
+        data={data} 
+        options={options} 
+      />
     </div>
   );
 };

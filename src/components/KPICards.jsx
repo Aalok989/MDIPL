@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { FiDollarSign, FiUsers, FiFolder, FiTrendingUp, FiStar } from "react-icons/fi";
+import { FiUsers, FiFolder, FiTrendingUp, FiStar } from "react-icons/fi";
 import mdiplLogo from "../assets/MDIPL Logo.png";
 import GeoMap from "../components/GeoMap";
 
@@ -95,7 +95,7 @@ const Sidebar = () => {
               <p className="text-2xl font-extrabold text-blue-900">{kpis["Total Bills"] || "₹0"}</p>
             </div>
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-md">
-              <FiDollarSign className="w-6 h-6 text-white" />
+              <span className="flex items-center justify-center w-6 h-6 text-white text-2xl">₹</span>
             </div>
           </div>
         </div>

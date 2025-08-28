@@ -38,7 +38,7 @@ export const API_CONFIG = {
     DEAL_SIZE_DISTRIBUTION: '/api/chart_deal_size_distribution',
     SUCCESS_BLUEPRINT: '/api/chart_success_blueprint',
     GEOSPATIAL_ANALYSIS: '/api/geospatial_analysis',
-
+    WEEKLY_SALES:'/api/chart_day_of_week_sales',
   }
 
 };

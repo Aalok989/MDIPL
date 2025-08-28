@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -9,34 +9,107 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import ChartDataLabels from 'chartjs-plugin-datalabels';
+import ChartDataLabels from "chartjs-plugin-datalabels";
 import useResizeKey from "../hooks/useResizeKey";
+import { getApiUrl } from "../config/api";
 
 // Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartDataLabels
+);
 
-const DayOfWeekSalesChart = () => {
+const DayOfWeekSalesChart = ({ inModal = false }) => {
   const resizeKey = useResizeKey();
-  // 🔹 Hardcoded sales data by day of week
-  const dayOfWeekSales = {
-    Monday: 5000,
-    Tuesday: 7200,
-    Wednesday: 6100,
-    Thursday: 8300,
-    Friday: 9200,
-    Saturday: 10500,
-    Sunday: 7500,
-  };
+  const [chartData, setChartData] = useState({ labels: [], values: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Filter state for modal view
+  const [nValue, setNValue] = useState(7); // Default to show all 7 days
+  
+  // Ensure hooks order is stable across renders: define layout hooks before any early returns
+  const chartRef = useRef(null);
+  const chartHeight = useMemo(() => {
+    return inModal ? 400 : 400; // Same height for both views like SuppliersByTotalSpend
+  }, [inModal]);
+  
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) {
+      chart.resize();
+    }
+  }, [chartHeight, chartData.labels.length]);
 
-  const labels = Object.keys(dayOfWeekSales);
-  const values = Object.values(dayOfWeekSales);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(getApiUrl("WEEKLY_SALES"));
+        if (!response.ok) {
+          throw new Error("Failed to fetch API");
+        }
+
+        const data = await response.json();
+        console.log(data); // Log the actual API response
+
+        // ✅ CORRECTED: Parse the API response to match the expected format
+        if (data && data.labels && data.datasets && data.datasets[0]) {
+          setChartData({
+            labels: data.labels,
+            values: data.datasets[0].data,
+          });
+        } else {
+          throw new Error("Unexpected API response format");
+        }
+      } catch (err) {
+        setError(err.message);
+        // Fallback dummy data if API fails, matching the new state structure
+        setChartData({
+          labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+          values: [5000, 7200, 6100, 8300, 9200, 10500, 7500],
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Apply filter to data
+  const filteredData = useMemo(() => {
+    if (!inModal || nValue === 7) {
+      return chartData;
+    }
+    
+    // For day of week, we can show top N days by sales value
+    const sortedData = chartData.labels.map((label, index) => ({
+      label,
+      value: chartData.values[index] || 0
+    })).sort((a, b) => b.value - a.value);
+    
+    const topN = sortedData.slice(0, nValue);
+    
+    return {
+      labels: topN.map(item => item.label),
+      values: topN.map(item => item.value)
+    };
+  }, [chartData, nValue, inModal]);
 
   const data = {
-    labels,
+    labels: filteredData.labels,
     datasets: [
       {
         label: "Total Sales",
-        data: values,
+        data: filteredData.values,
         backgroundColor: "#FF714B",
         borderColor: "#FF714B",
         borderWidth: 1,
@@ -47,38 +120,90 @@ const DayOfWeekSalesChart = () => {
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false, // Same as SuppliersByTotalSpend
     plugins: {
       legend: { display: false },
       title: {
         display: true,
-        text: "Weekly Rhythm: Total Sales by Day of the Week",
+        text: inModal && nValue < 7 
+          ? `Weekly Rhythm: Top ${nValue} Days by Sales`
+          : "Weekly Rhythm: Total Sales by Day of the Week",
         font: { size: 18 },
-        align: 'start',
-        color: '#1f2937',
+        align: "start",
+        color: "#1f2937",
         padding: { top: 6, bottom: 10 },
       },
       datalabels: {
-        color: '#ffffff',
-        anchor: 'center',
-        align: 'center',
+        color: "#ffffff",
+        anchor: "center",
+        align: "center",
         clamp: true,
         clip: true,
-        font: { weight: 'bold', size: 10 },
+        font: { weight: "bold", size: 10 },
         formatter: (value) => Number(value).toLocaleString(),
       },
     },
     scales: {
+      x: {
+        display: true,
+        title: {
+          display: true,
+          text: "Day of the Week",
+          font: { size: 12, weight: "bold" },
+          color: "#374151",
+        },
+        ticks: {
+          display: true,
+          font: { size: 11 },
+          color: "#6B7280",
+        },
+      },
       y: {
         beginAtZero: true,
+        title: {
+          display: true,
+          text: "Total Sales ($)",
+          font: { size: 12, weight: "bold" },
+          color: "#374151",
+        },
         ticks: {
           stepSize: 2000,
+          callback: function(value) {
+            return '$' + value.toLocaleString(); // Add currency formatting
+          }
         },
       },
     },
   };
 
+  if (loading) return <p>Loading chart...</p>;
+  if (error) return <p className="text-red-500">Error: {error}</p>;
+
   return (
-    <Bar data={data} options={options} />
+    <div className="relative w-full" style={{ height: chartHeight }}>
+      {/* Quick select filter - only in modal */}
+      {inModal && (
+        <div className="absolute top-1 right-12 z-20">
+          <select
+            value={nValue}
+            onChange={(e) => setNValue(parseInt(e.target.value, 10))}
+            className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
+          >
+            <option value={7}>All Days</option>
+            <option value={5}>Top 5</option>
+            <option value={3}>Top 3</option>
+            <option value={2}>Top 2</option>
+          </select>
+        </div>
+      )}
+      
+      <Bar 
+        ref={chartRef}
+        key={`${resizeKey}-${filteredData.labels.length}`} 
+        data={data} 
+        options={options} 
+      />
+    </div>
   );
 };
 

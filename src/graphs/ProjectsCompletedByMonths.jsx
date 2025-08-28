@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -24,11 +24,27 @@ ChartJS.register(
   Filler
 );
 
-const ProjectsCompletedByMonths = () => {
+const ProjectsCompletedByMonths = ({ inModal = false }) => {
   const resizeKey = useResizeKey();
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Filter state for modal view
+  const [nValue, setNValue] = useState(12); // Default to show all 12 months
+  
+  // Ensure hooks order is stable across renders: define layout hooks before any early returns
+  const chartRef = useRef(null);
+  const chartHeight = useMemo(() => {
+    return inModal ? 400 : 400; // Same height for both views like other charts
+  }, [inModal]);
+  
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) {
+      chart.resize();
+    }
+  }, [chartHeight, chartData]);
 
   // Modern fetch function with better error handling
   const fetchChartData = useCallback(async () => {
@@ -56,8 +72,28 @@ const ProjectsCompletedByMonths = () => {
     fetchChartData();
   }, [fetchChartData]);
 
+  // Apply filter to data
+  const filteredData = useMemo(() => {
+    if (!chartData || !inModal || nValue === 12) {
+      return chartData;
+    }
+    
+    // For time series, show last N months
+    const labels = chartData.labels.slice(-nValue);
+    const datasets = chartData.datasets.map(dataset => ({
+      ...dataset,
+      data: dataset.data.slice(-nValue)
+    }));
+    
+    return {
+      labels,
+      datasets
+    };
+  }, [chartData, nValue, inModal]);
+
   const options = {
     responsive: true,
+    maintainAspectRatio: false, // Same as other charts
     plugins: {
       legend: {
         display: true,
@@ -68,7 +104,9 @@ const ProjectsCompletedByMonths = () => {
       },
       title: {
         display: true,
-        text: "Projects Completed per Month (Area)",
+        text: inModal && nValue < 12 
+          ? `Projects Completed - Last ${nValue} Months`
+          : "Projects Completed per Month (Area)",
         font: {
           size: 18,
           weight: "bold",
@@ -143,8 +181,32 @@ const ProjectsCompletedByMonths = () => {
     );
   }
 
-  // Removed the extra div wrapper that was creating a card inside a card
-  return <Line data={chartData} options={options} />;
+  return (
+    <div className="relative w-full" style={{ height: chartHeight }}>
+      {/* Quick select filter - only in modal */}
+      {inModal && (
+        <div className="absolute top-1 right-12 z-20">
+          <select
+            value={nValue}
+            onChange={(e) => setNValue(parseInt(e.target.value, 10))}
+            className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
+          >
+            <option value={12}>All Months</option>
+            <option value={6}>Last 6 Months</option>
+            <option value={3}>Last 3 Months</option>
+            <option value={2}>Last 2 Months</option>
+          </select>
+        </div>
+      )}
+      
+      <Line 
+        ref={chartRef}
+        key={`${resizeKey}-${filteredData?.labels?.length || 0}`} 
+        data={filteredData || chartData} 
+        options={options} 
+      />
+    </div>
+  );
 };
 
 export default ProjectsCompletedByMonths;

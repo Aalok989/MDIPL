@@ -193,16 +193,14 @@ const GeoMap = () => {
   }
 
   return (
-    <div className="relative h-full -m-4">
-      <div className="absolute inset-0">
-        <Plot
-          data={layers}
-          layout={layout}
-          style={{ width: '100%', height: '100%', padding: 0, margin: 0 }}
-          config={{ responsive: true, displayModeBar: false }}
-          useResizeHandler
-        />
-      </div>
+    <div className="">
+      <Plot
+        data={layers}
+        layout={layout}
+        style={{ width: '100%', height: '100%', padding: 0, margin: 0 }}
+        config={{ responsive: true, displayModeBar: false }}
+        useResizeHandler
+      />
     </div>
   );
 };

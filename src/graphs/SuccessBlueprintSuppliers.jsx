@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import Plot from "react-plotly.js";
 import { apiRequest } from "../config/api";
 import useResizeKey from "../hooks/useResizeKey";
+import useLabelAbbreviation from "../hooks/useLabelAbbreviation";
 
 export default function SuccessBlueprintSuppliers() {
   const resizeKey = useResizeKey(200);
+  const { abbreviateLabel } = useLabelAbbreviation(12);
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,20 +16,19 @@ export default function SuccessBlueprintSuppliers() {
       try {
         setLoading(true);
         const response = await apiRequest('SUCCESS_BLUEPRINT');
-        
-        // Extract the vendor chart data from the API response
         const vendorData = response.vendor_chart;
-        
         if (vendorData && vendorData.data) {
+          const originalLabels = vendorData.data.labels;
+          const abbreviatedLabels = originalLabels.map(abbreviateLabel);
           const trace = {
             type: "treemap",
-            labels: vendorData.data.labels,
-            parents: Array(vendorData.data.labels.length).fill("Suppliers"),
+            labels: abbreviatedLabels,
+            parents: Array(abbreviatedLabels.length).fill("Suppliers"),
             values: vendorData.data.datasets[0].data,
             textinfo: "label+value",
-            hovertemplate: "%{label}<br>Contributions: %{value}<extra></extra>",
+            hovertemplate: `%{customdata}<br>Contributions: %{value}<extra></extra>`,
+            customdata: originalLabels, // Pass full names for hover
           };
-          
           setChartData(trace);
           setError(null);
         } else {
@@ -40,7 +41,6 @@ export default function SuccessBlueprintSuppliers() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
@@ -49,7 +49,7 @@ export default function SuccessBlueprintSuppliers() {
     margin: { t: 10, l: 20, r: 20, b: 20 },
     height: 320,
     autosize: true,
-    uniformtext: { minsize: 10, mode: "hide" },
+    uniformtext: { minsize: 8, mode: "show" },
   };
 
   const config = { responsive: true, displayModeBar: false };

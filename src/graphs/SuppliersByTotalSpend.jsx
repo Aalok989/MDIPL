@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -16,11 +16,27 @@ import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
-export default function SuppliersByTotalSpend() {
+export default function SuppliersByTotalSpend({ inModal = false }) {
   const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Filter state for modal view
+  const [nValue, setNValue] = useState(10); // Default to show top 10
+  
+  // Ensure hooks order is stable across renders: define layout hooks before any early returns
+  const chartRef = useRef(null);
+  const chartHeight = useMemo(() => {
+    return inModal ? Math.min(800, Math.max(400, nValue * 30)) : 400;
+  }, [inModal, nValue]);
+  
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) {
+      chart.resize();
+    }
+  }, [chartHeight, nValue]);
 
   // Fallback sample data in case API fails
   const fallbackData = [
@@ -99,19 +115,32 @@ export default function SuppliersByTotalSpend() {
     fetchSuppliers();
   }, []);
 
-  // 🔹 Sort suppliers ascending (so largest appears at top)
-  // Ensure suppliers is always an array before spreading
-  const sortedSuppliers = Array.isArray(suppliers) 
-    ? [...suppliers].sort((a, b) => a.bill_total - b.bill_total)
-    : [];
+  // 🔹 Sort suppliers ascending (so largest appears at top) and apply filter
+  const filteredSuppliers = useMemo(() => {
+    if (!Array.isArray(suppliers)) return [];
+    
+    const sorted = [...suppliers].sort((a, b) => b.bill_total - a.bill_total);
+    
+    if (!inModal || nValue === 'all') {
+      return sorted;
+    }
+    
+    // Normalize data and ensure exactly nValue items
+    const normalized = sorted.slice(0, nValue).map(s => ({
+      supplier_name: s?.supplier_name && String(s.supplier_name).trim() !== "" ? s.supplier_name : "Unknown Supplier",
+      bill_total: s?.bill_total || 0
+    }));
+    
+    return normalized;
+  }, [suppliers, nValue, inModal]);
 
   // Validate and prepare chart data
   const chartData = {
-    labels: sortedSuppliers.map((s) => s?.supplier_name || 'Unknown Supplier'),
+    labels: filteredSuppliers.map((s) => s?.supplier_name || 'Unknown Supplier'),
     datasets: [
       {
         label: "Total Spend",
-        data: sortedSuppliers.map((s) => s?.bill_total || 0),
+        data: filteredSuppliers.map((s) => s?.bill_total || 0),
         backgroundColor: "#3E0703",
         borderColor: "#3E0703",
         borderWidth: 1,
@@ -123,11 +152,16 @@ export default function SuppliersByTotalSpend() {
   const options = {
     indexAxis: "y", // 🔹 horizontal bar chart
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       title: {
         display: true,
-        text: error ? "Sample Data: Top Suppliers by Total Spend" : "Our Lifelines: Top 10 Suppliers by Total Spend",
+        text: error 
+          ? "Sample Data: Top Suppliers by Total Spend" 
+          : inModal && nValue !== 'all'
+            ? `Our Lifelines: Top ${nValue} Suppliers by Total Spend`
+            : "Our Lifelines: Top Suppliers by Total Spend",
         font: { size: 18 },
         align: 'start',
         color: '#1f2937',
@@ -210,6 +244,32 @@ export default function SuppliersByTotalSpend() {
   }
 
   return (
-    <Bar data={chartData} options={options} />
+    <div className="relative w-full" style={{ height: chartHeight }}>
+      {/* Quick select filter - only in modal */}
+      {inModal && (
+        <div className="absolute top-1 right-12 z-20">
+          <select
+            value={nValue}
+            onChange={(e) => setNValue(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
+            className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
+          >
+            <option value="all">All Suppliers</option>
+            <option value={5}>Top 5</option>
+            <option value={10}>Top 10</option>
+            <option value={15}>Top 15</option>
+            <option value={20}>Top 20</option>
+            <option value={25}>Top 25</option>
+            <option value={30}>Top 30</option>
+          </select>
+        </div>
+      )}
+      
+      <Bar 
+        ref={chartRef}
+        key={`suppliers-${filteredSuppliers.length}`}
+        data={chartData} 
+        options={options} 
+      />
+    </div>
   );
 };

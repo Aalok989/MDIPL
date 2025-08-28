@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -16,12 +16,13 @@ import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 // Register required Chart.js modules
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
-export default function ProjectsByTotalRevenue() {
+export default function ProjectsByTotalRevenue({ inModal = false, n }) {
   const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
   const [projects, setProjects] = useState([]);
   const [revenues, setRevenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [nValue, setNValue] = useState(typeof n === 'number' ? n : 15);
 
   // Fallback sample data in case API fails
   const fallbackProjects = [
@@ -35,83 +36,63 @@ export default function ProjectsByTotalRevenue() {
     68000, 65000, 62000, 60000, 58000
   ];
 
-  // 🔹 Fetch live projects data
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await fetch(getApiUrl('PROJECT_PROFITABILITY'));
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Check if data is already in Chart.js format
-        if (data && data.labels && data.datasets && Array.isArray(data.labels)) {
-          console.log('Data is already in Chart.js format with', data.labels.length, 'labels');
-          // Filter out empty labels and set the data
-          const validLabels = data.labels.filter(label => label && label.trim() !== '');
-          const validData = data.datasets[0].data.slice(0, validLabels.length);
-          
-          setProjects(validLabels);
-          setRevenues(validData);
-        } else if (Array.isArray(data)) {
-          console.log('Data is an array with', data.length, 'items');
-          // Handle array format if needed
-          setProjects([]);
-          setRevenues([]);
-        } else if (data && typeof data === 'object') {
-          // If data is an object, check if it has a results property (common in Django REST)
-          if (Array.isArray(data.results)) {
-            console.log('Data has results array with', data.results.length, 'items');
-            // Process results array if needed
-            setProjects([]);
-            setRevenues([]);
-          } else if (Array.isArray(data.data)) {
-            console.log('Data has data array with', data.data.length, 'items');
-            // Process data array if needed
-            setProjects([]);
-            setRevenues([]);
-          } else {
-            console.warn('Unexpected data structure:', data);
-            console.log('Available keys:', Object.keys(data));
-            setProjects([]);
-            setRevenues([]);
-          }
-        } else {
-          console.warn('Data is not in expected format:', data);
-          console.log('Data type:', typeof data);
-          setProjects([]);
-          setRevenues([]);
-        }
-        
-        setError(null);
-      } catch (error) {
-        console.error("Error fetching projects data:", error);
-        setError(error.message);
-        // Use fallback data instead of empty arrays
-        setProjects(fallbackProjects);
-        setRevenues(fallbackRevenues);
-      } finally {
-        setLoading(false);
+  const fetchProjects = async (n = 15) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const baseUrl = getApiUrl('PROJECT_PROFITABILITY');
+      const url = `${baseUrl}?n=${n}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! ${response.status}`);
       }
-    };
+      const data = await response.json();
+      if (data && data.labels && data.datasets && Array.isArray(data.labels)) {
+        const requested = typeof n === 'number' && n > 0 ? n : 15;
+        // Keep requested count by normalizing empty labels instead of filtering them out
+        const rawLabels = data.labels.slice(0, requested);
+        const normalizedLabels = rawLabels.map((l) => (l && String(l).trim() !== '' ? l : 'Unknown'));
+        const rawData = (data.datasets?.[0]?.data || []).slice(0, normalizedLabels.length);
+        // Coerce non-numeric to 0 to maintain count consistency
+        const normalizedData = rawData.map((v) => (typeof v === 'number' && !Number.isNaN(v) ? v : 0));
+        setProjects(normalizedLabels);
+        setRevenues(normalizedData);
+      } else {
+        throw new Error('Unexpected data structure');
+      }
+    } catch (err) {
+      console.error('Error fetching projects:', err);
+      setError(err.message);
+      const requested = n === 'all' ? fallbackProjects.length : (typeof n === 'number' && n > 0 ? n : 15);
+      setProjects(fallbackProjects.slice(0, requested));
+      setRevenues(fallbackRevenues.slice(0, requested));
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchProjects();
-  }, []);
+  // Sync with parent-provided n
+  useEffect(() => {
+    if (n === 'all') {
+      // fetch with a high cap to approximate "all"
+      setNValue(100);
+    } else if (typeof n === 'number' && n > 0) {
+      setNValue(n);
+    }
+  }, [n]);
+
+  useEffect(() => {
+    fetchProjects(nValue);
+  }, [nValue]);
 
   const data = {
-    labels: projects.map(p => p || 'Unknown Project'),
+    labels: projects.map((p) => p || 'Unknown'),
     datasets: [
       {
-        label: "Total Revenue",
-        data: revenues.map(r => r || 0),
-        backgroundColor: "#991B1B",
-        borderColor: "#991B1B",
+        label: 'Total Revenue',
+        data: revenues.map((r) => r || 0),
+        backgroundColor: '#991B1B',
+        borderColor: '#991B1B',
         borderWidth: 1,
         borderRadius: 6,
       },
@@ -121,11 +102,12 @@ export default function ProjectsByTotalRevenue() {
   const options = {
     indexAxis: "y", // 🔹 Horizontal bar chart
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       title: {
         display: true,
-        text: error ? "Sample Data: Top Projects by Total Revenue" : "Cash Cows: Top 15 Projects by Total Revenue",
+        text: error ? `Sample Data: Top ${nValue} Projects by Total Revenue` : `Cash Cows: Top ${nValue} Projects by Total Revenue`,
         font: { size: 18 },
         align: 'start',
         color: '#1f2937',
@@ -183,13 +165,21 @@ export default function ProjectsByTotalRevenue() {
     );
   }
 
-  // Show loading state
+  // Dynamic chart height and resize handling
+  const desiredRowHeight = 26;
+  const chartHeight = useMemo(() => Math.min(1200, Math.max(300, projects.length * desiredRowHeight)), [projects.length]);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) chart.resize();
+  }, [chartHeight, projects.length, revenues.length]);
+
   if (loading) {
     return (
       <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-4xl mx-auto">
         <div className="text-center text-gray-500">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p>Loading projects data...</p>
+          <p>Loading top {nValue} projects...</p>
         </div>
       </div>
     );
@@ -208,6 +198,35 @@ export default function ProjectsByTotalRevenue() {
   }
 
   return (
-    <Bar data={data} options={options} />
+    <div className={inModal ? 'flex flex-col h-full' : ''}>
+      {/* Chart */}
+      <div className={inModal ? 'w-full flex-1' : 'w-full'}>
+        <div style={{ position: 'relative', width: '100%', height: inModal ? '100%' : chartHeight, minHeight: 0, overflow: 'hidden' }}>
+          {inModal && (
+            <div className="absolute top-1 right-12 z-20">
+              <select
+                value={nValue}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNValue(val === 'all' ? 100 : parseInt(val, 10));
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-xs bg-white shadow-sm"
+                title="Quick select"
+              >
+                <option value="all">All</option>
+                <option value={5}>Top 5</option>
+                <option value={10}>Top 10</option>
+                <option value={15}>Top 15</option>
+                <option value={20}>Top 20</option>
+                <option value={25}>Top 25</option>
+                <option value={30}>Top 30</option>
+                <option value={50}>Top 50</option>
+              </select>
+            </div>
+          )}
+          <Bar ref={chartRef} key={projects.length} data={data} options={options} />
+        </div>
+      </div>
+    </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -16,11 +16,12 @@ import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
-export default function CustomersByTotalRevenue() {
+export default function CustomersByTotalRevenue({ inModal = false }) {
   const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [nValue, setNValue] = useState(10);
 
   // Fallback sample data in case API fails
   const fallbackData = [
@@ -36,14 +37,14 @@ export default function CustomersByTotalRevenue() {
     { customer_name: "Jupiter Pvt Ltd", bill_total: 8800 },
   ];
 
-  // 🔹 Fetch live customers data
+  // 🔹 Fetch live customers data with ?n=
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        const response = await fetch(getApiUrl('TOP_CUSTOMERS'));
+        const baseUrl = getApiUrl('TOP_CUSTOMERS');
+        const response = await fetch(`${baseUrl}?n=${nValue}`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -51,14 +52,13 @@ export default function CustomersByTotalRevenue() {
         
         const data = await response.json();
         
-        // Check if data is already in Chart.js format
+        // Normalize to preserve exact N
         if (data && data.labels && data.datasets && Array.isArray(data.labels)) {
-          console.log('Data is already in Chart.js format with', data.labels.length, 'labels');
-          // Convert Chart.js format to our internal format
-          const customersArray = data.labels.map((label, index) => ({
-            customer_name: label,
-            bill_total: data.datasets[0].data[index] || 0
-          }));
+          const rawLabels = data.labels.slice(0, nValue);
+          const normalizedLabels = rawLabels.map(l => (l && String(l).trim() !== '' ? l : 'Unknown Customer'));
+          const rawData = (data.datasets?.[0]?.data || []).slice(0, normalizedLabels.length);
+          const normalizedData = rawData.map(v => (typeof v === 'number' && !Number.isNaN(v) ? v : 0));
+          const customersArray = normalizedLabels.map((label, index) => ({ customer_name: label, bill_total: normalizedData[index] || 0 }));
           setCustomers(customersArray);
         } else if (Array.isArray(data)) {
           console.log('Data is an array with', data.length, 'items');
@@ -94,14 +94,14 @@ export default function CustomersByTotalRevenue() {
         console.error("Error fetching customers data:", error);
         setError(error.message);
         // Use fallback data instead of empty array
-        setCustomers(fallbackData);
+        setCustomers(fallbackData.slice(0, nValue));
       } finally {
         setLoading(false);
       }
     };
 
     fetchCustomers();
-  }, []);
+  }, [nValue]);
 
   // 🔹 Sort customers ascending (so largest appears at top)
   // Ensure customers is always an array before spreading
@@ -126,6 +126,7 @@ export default function CustomersByTotalRevenue() {
   const options = {
     indexAxis: "y", // 🔹 Horizontal bar chart
     responsive: true,
+    maintainAspectRatio: false, // Same as SuppliersByTotalSpend
     plugins: {
       legend: { display: false },
       title: {
@@ -149,6 +150,12 @@ export default function CustomersByTotalRevenue() {
     scales: {
       x: {
         beginAtZero: true,
+        title: {
+          display: true,
+          text: "Total Revenue ($)",
+          font: { size: 12, weight: "bold" },
+          color: "#374151",
+        },
         ticks: {
           callback: function(value) {
             return formatAxisValue(value);
@@ -157,6 +164,12 @@ export default function CustomersByTotalRevenue() {
         },
       },
       y: {
+        title: {
+          display: true,
+          text: "Customer Name",
+          font: { size: 12, weight: "bold" },
+          color: "#374151",
+        },
         ticks: {
           autoSkip: false,
           font: { size: 10 },
@@ -168,6 +181,16 @@ export default function CustomersByTotalRevenue() {
       }
     },
   };
+
+  // Compute layout metrics and attach resize handler BEFORE any early returns to keep hook order stable
+  const chartHeight = useMemo(() => {
+    return inModal ? 400 : 400; // Same height for both views like SuppliersByTotalSpend
+  }, [inModal]);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) chart.resize();
+  }, [chartHeight, customers.length]);
 
   // Show error state
   if (error) {
@@ -213,6 +236,32 @@ export default function CustomersByTotalRevenue() {
   }
 
   return (
-    <Bar data={data} options={options} />
+    <div className="relative w-full" style={{ height: chartHeight }}>
+      {/* Quick select filter - only in modal */}
+      {inModal && (
+        <div className="absolute top-1 right-12 z-20">
+          <select
+            value={nValue}
+            onChange={(e) => {
+              const val = e.target.value;
+              setNValue(val === 'all' ? 100 : parseInt(val, 10));
+            }}
+            className="px-2 py-1 border border-gray-300 rounded text-xs bg-white shadow-sm"
+            title="Quick select"
+          >
+            <option value="all">All</option>
+            <option value={5}>Top 5</option>
+            <option value={10}>Top 10</option>
+            <option value={15}>Top 15</option>
+            <option value={20}>Top 20</option>
+            <option value={25}>Top 25</option>
+            <option value={30}>Top 30</option>
+            <option value={50}>Top 50</option>
+          </select>
+        </div>
+      )}
+      
+      <Bar ref={chartRef} data={data} options={options} />
+    </div>
   );
 };

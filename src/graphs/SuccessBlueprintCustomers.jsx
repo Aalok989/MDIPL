@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import Plot from "react-plotly.js";
 import { apiRequest } from "../config/api";
 import useResizeKey from "../hooks/useResizeKey";
+import useLabelAbbreviation from "../hooks/useLabelAbbreviation";
 
 export default function SuccessBlueprintCustomers() {
   const resizeKey = useResizeKey(200);
+  const { abbreviateLabel } = useLabelAbbreviation(12);
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,20 +16,19 @@ export default function SuccessBlueprintCustomers() {
       try {
         setLoading(true);
         const response = await apiRequest('SUCCESS_BLUEPRINT');
-        
-        // Extract the customers chart data from the API response
         const customersData = response.customers_chart;
-        
         if (customersData && customersData.data) {
+          const originalLabels = customersData.data.labels;
+          const abbreviatedLabels = originalLabels.map(abbreviateLabel);
           const trace = {
             type: "treemap",
-            labels: customersData.data.labels,
-            parents: Array(customersData.data.labels.length).fill("Customers"),
+            labels: abbreviatedLabels,
+            parents: Array(abbreviatedLabels.length).fill("Customers"),
             values: customersData.data.datasets[0].data,
             textinfo: "label+value",
-            hovertemplate: "%{label}<br>Contributions: %{value}<extra></extra>",
+            hovertemplate: `%{customdata}<br>Contributions: %{value}<extra></extra>`,
+            customdata: originalLabels,
           };
-          
           setChartData(trace);
           setError(null);
         } else {
@@ -40,7 +41,6 @@ export default function SuccessBlueprintCustomers() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 

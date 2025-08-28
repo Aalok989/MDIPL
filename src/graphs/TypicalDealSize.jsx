@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -11,66 +11,98 @@ import {
 } from "chart.js";
 import { apiRequest } from "../config/api";
 
-// Register chart.js modules
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const TypicalDealSize = () => {
+const TypicalDealSize = ({ inModal = false }) => {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [binN, setBinN] = useState('all');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await apiRequest('DEAL_SIZE_DISTRIBUTION');
-        
-        // Transform the API data to match the chart format
+        const data = await apiRequest("DEAL_SIZE_DISTRIBUTION");
+
+        // Clean up labels: remove duplicates like "1M-1M", "2M-2M" etc.
+        const uniqueLabels = [];
+        const uniqueData = [];
+        data.labels.forEach((label, i) => {
+          if (!uniqueLabels.includes(label)) {
+            uniqueLabels.push(label);
+            uniqueData.push(data.datasets[0].data[i]);
+          } else {
+            // if duplicate bin exists, sum the counts
+            const idx = uniqueLabels.indexOf(label);
+            uniqueData[idx] += data.datasets[0].data[i];
+          }
+        });
+
+        const limit = binN === 'all' ? uniqueLabels.length : Math.min(uniqueLabels.length, Number(binN) || uniqueLabels.length);
         const transformedData = {
-          labels: data.labels,
+          labels: uniqueLabels.slice(0, limit),
           datasets: [
             {
               label: "Number of Deals",
-              data: data.datasets[0].data,
-              backgroundColor: "rgba(239, 68, 68, 0.6)", // Tailwind red-500
-              borderColor: "rgb(239, 68, 68)",
+              data: uniqueData.slice(0, limit),
+              backgroundColor: "rgba(59, 130, 246, 0.7)", // Tailwind blue-500
+              borderColor: "rgb(59, 130, 246)",
               borderWidth: 1,
-              borderRadius: 4,
+              borderRadius: 0, // flat bars for histogram look
+              barPercentage: 1.0,
+              categoryPercentage: 1.0,
             },
           ],
         };
-        
+
         setChartData(transformedData);
         setError(null);
       } catch (err) {
-        console.error('Error fetching deal size data:', err);
-        setError('Failed to load deal size data');
+        console.error("Error fetching deal size data:", err);
+        setError("Failed to load deal size data");
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [binN]);
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false, // Same as SuppliersByTotalSpend
     plugins: {
       legend: { display: false },
       title: {
         display: true,
         text: 'What is a "Typical" Deal Size?',
         font: { size: 18 },
-        align: 'start',
-        color: '#1f2937',
+        align: "start",
+        color: "#1f2937",
         padding: { top: 6, bottom: 10 },
       },
     },
     scales: {
-      y: { beginAtZero: true, title: { display: true, text: "Number of Deals" } },
-      x: { title: { display: true, text: "Deal Size Range" } },
+      y: {
+        beginAtZero: true,
+        title: { display: true, text: "Number of Deals" },
+      },
+      x: {
+        title: { display: true, text: "Deal Size Range" },
+      },
     },
   };
+
+  // Ensure hooks order is stable across renders: define layout hooks before any early returns
+  const chartHeight = useMemo(() => {
+    return inModal ? 400 : 400; // Same height for both views like SuppliersByTotalSpend
+  }, [inModal]);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    const c = chartRef.current?.chart || chartRef.current;
+    if (c?.resize) c.resize();
+  }, [chartHeight, chartData]);
 
   if (loading) {
     return (
@@ -96,7 +128,29 @@ const TypicalDealSize = () => {
     );
   }
 
-  return <Bar data={chartData} options={options} />;
+  return (
+    <div className="relative w-full" style={{ height: chartHeight }}>
+      {/* Quick select filter - only in modal */}
+      {inModal && (
+        <div className="absolute top-1 right-12 z-20">
+          <select
+            value={binN}
+            onChange={(e) => setBinN(e.target.value)}
+            className="px-2 py-1 border border-gray-300 rounded text-xs bg-white shadow-sm"
+            title="Quick select"
+          >
+            <option value="all">All</option>
+            <option value={5}>Top 5</option>
+            <option value={10}>Top 10</option>
+            <option value={15}>Top 15</option>
+            <option value={20}>Top 20</option>
+          </select>
+        </div>
+      )}
+      
+      <Bar ref={chartRef} data={chartData} options={options} />
+    </div>
+  );
 };
 
 export default TypicalDealSize;

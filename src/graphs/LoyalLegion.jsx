@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -16,12 +16,13 @@ import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
-export default function LoyalLegion() {
+export default function LoyalLegion({ inModal = false, n }) {
   const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
   const [customers, setCustomers] = useState([]);
   const [billCounts, setBillCounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [nValue, setNValue] = useState(typeof n === 'number' ? n : 15);
 
   // Fallback sample data in case API fails
   const fallbackCustomers = [
@@ -34,74 +35,53 @@ export default function LoyalLegion() {
     48, 44, 42, 40, 39, 38, 36, 35, 34, 32, 30, 29, 28, 27, 25
   ];
 
-  // 🔹 Fetch live customer loyalty data
+  // Sync with external n (from modal quick select)
+  useEffect(() => {
+    if (n === 'all') {
+      setNValue(100);
+    } else if (typeof n === 'number' && n > 0) {
+      setNValue(n);
+    }
+  }, [n]);
+
+  // Fetch data with ?n=
   useEffect(() => {
     const fetchCustomerLoyalty = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        const response = await fetch(getApiUrl('CUSTOMER_LOYALTY'));
-        
+        const baseUrl = getApiUrl('CUSTOMER_LOYALTY');
+        const url = `${baseUrl}?n=${nValue}`;
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
         const data = await response.json();
-        
-        // Check if data is already in Chart.js format
         if (data && data.labels && data.datasets && Array.isArray(data.labels)) {
-          console.log('Data is already in Chart.js format with', data.labels.length, 'labels');
-          // Filter out empty labels and set the data
-          const validLabels = data.labels.filter(label => label && label.trim() !== '');
-          const validData = data.datasets[0].data.slice(0, validLabels.length);
-          
-          setCustomers(validLabels);
-          setBillCounts(validData);
-        } else if (Array.isArray(data)) {
-          console.log('Data is an array with', data.length, 'items');
-          // Handle array format if needed
-          setCustomers([]);
-          setBillCounts([]);
-        } else if (data && typeof data === 'object') {
-          // If data is an object, check if it has a results property (common in Django REST)
-          if (Array.isArray(data.results)) {
-            console.log('Data has results array with', data.results.length, 'items');
-            // Process results array if needed
-            setCustomers([]);
-            setBillCounts([]);
-          } else if (Array.isArray(data.data)) {
-            console.log('Data has data array with', data.data.length, 'items');
-            // Process data array if needed
-            setCustomers([]);
-            setBillCounts([]);
-          } else {
-            console.warn('Unexpected data structure:', data);
-            console.log('Available keys:', Object.keys(data));
-            setCustomers([]);
-            setBillCounts([]);
-          }
+          // Normalize to preserve count N
+          const rawLabels = data.labels.slice(0, nValue);
+          const normalizedLabels = rawLabels.map((l) => (l && String(l).trim() !== '' ? l : 'Unknown Customer'));
+          const rawData = (data.datasets?.[0]?.data || []).slice(0, normalizedLabels.length);
+          const normalizedData = rawData.map((v) => (typeof v === 'number' && !Number.isNaN(v) ? v : 0));
+          setCustomers(normalizedLabels);
+          setBillCounts(normalizedData);
         } else {
-          console.warn('Data is not in expected format:', data);
-          console.log('Data type:', typeof data);
-          setCustomers([]);
-          setBillCounts([]);
+          throw new Error('Unexpected data structure');
         }
-        
         setError(null);
       } catch (error) {
         console.error("Error fetching customer loyalty data:", error);
         setError(error.message);
-        // Use fallback data instead of empty arrays
-        setCustomers(fallbackCustomers);
-        setBillCounts(fallbackBillCounts);
+        const requested = nValue;
+        setCustomers(fallbackCustomers.slice(0, requested));
+        setBillCounts(fallbackBillCounts.slice(0, requested));
       } finally {
         setLoading(false);
       }
     };
 
     fetchCustomerLoyalty();
-  }, []);
+  }, [nValue]);
 
   const data = {
     labels: customers.map(c => c || 'Unknown Customer'),
@@ -125,7 +105,7 @@ export default function LoyalLegion() {
       legend: { display: false },
       title: {
         display: true,
-        text: error ? "Sample Data: Top Customers by Number of Bills" : "Loyal Legion: Top 15 Customers by Number of Bills",
+        text: error ? `Sample Data: Top ${nValue} Customers by Number of Bills` : `Loyal Legion: Top ${nValue} Customers by Number of Bills`,
         font: { size: 18 },
         align: 'start',
         color: '#1f2937',
@@ -164,6 +144,15 @@ export default function LoyalLegion() {
       },
     },
   };
+
+  // Compute layout metrics and attach resize handler BEFORE any early returns to keep hook order stable
+  const desiredRowHeight = 26;
+  const chartHeight = useMemo(() => Math.min(1200, Math.max(300, customers.length * desiredRowHeight)), [customers.length]);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    const chart = chartRef.current?.chart || chartRef.current;
+    if (chart?.resize) chart.resize();
+  }, [chartHeight, customers.length, billCounts.length]);
 
   // Show error state
   if (error) {
@@ -208,7 +197,35 @@ export default function LoyalLegion() {
     );
   }
 
+  // Height handling similar to other chart for modal fill (already defined above)
+
   return (
-    <Bar data={data} options={options} />
+    <div className={inModal ? 'w-full h-full' : ''}>
+      <div style={{ position: 'relative', width: '100%', height: inModal ? '100%' : chartHeight, minHeight: 0, overflow: 'hidden' }}>
+        {inModal && (
+          <div className="absolute top-1 right-12 z-20">
+            <select
+              value={nValue}
+              onChange={(e) => {
+                const val = e.target.value;
+                setNValue(val === 'all' ? 100 : parseInt(val, 10));
+              }}
+              className="px-2 py-1 border border-gray-300 rounded text-xs bg-white shadow-sm"
+              title="Quick select"
+            >
+              <option value="all">All</option>
+              <option value={5}>Top 5</option>
+              <option value={10}>Top 10</option>
+              <option value={15}>Top 15</option>
+              <option value={20}>Top 20</option>
+              <option value={25}>Top 25</option>
+              <option value={30}>Top 30</option>
+              <option value={50}>Top 50</option>
+            </select>
+          </div>
+        )}
+        <Bar ref={chartRef} key={customers.length + '-' + (inModal ? 'modal' : 'card')} data={data} options={options} />
+      </div>
+    </div>
   );
 };
