@@ -158,7 +158,7 @@ const SpendBySeasonChart = ({ inModal = false }) => {
   return (
     <div className="w-full h-full flex flex-col">
       {/* Title & Subtitle */}
-      <h3 className="text-lg font-semibold text-gray-800 mb-3 px-4">Spend by Season</h3>
+      <h3 className={`${inModal ? 'text-xl' : 'text-lg'} font-semibold text-gray-800 mb-3 px-4`}>Spend by Season</h3>
 
       {/* Chart & Summary */}
       <div className="flex flex-col lg:flex-row gap-4 flex-1 px-4">
@@ -173,24 +173,24 @@ const SpendBySeasonChart = ({ inModal = false }) => {
         <div className="flex-1 flex flex-col gap-3 min-w-0">
           <div className="grid grid-cols-2 gap-3 text-center">
             <div className="bg-gray-50 p-2 rounded">
-              <p className="text-xs text-gray-500">Total Spend</p>
-              <p className="text-sm font-semibold text-green-700">{formatCurrency(totalSpend)}</p>
+              <p className={`${inModal ? 'text-sm' : 'text-xs'} text-gray-500`}>Total Spend</p>
+              <p className={`${inModal ? 'text-base' : 'text-sm'} font-semibold text-green-700`}>{formatCurrency(totalSpend)}</p>
             </div>
             <div className="bg-gray-50 p-2 rounded">
-              <p className="text-xs text-gray-500">Avg per Season</p>
-              <p className="text-sm font-semibold text-blue-700">{formatCurrency(avgPerSeason)}</p>
+              <p className={`${inModal ? 'text-sm' : 'text-xs'} text-gray-500`}>Avg per Season</p>
+              <p className={`${inModal ? 'text-base' : 'text-sm'} font-semibold text-blue-700`}>{formatCurrency(avgPerSeason)}</p>
             </div>
           </div>
 
           {/* Season Breakdown */}
           <div className="flex-1">
-            <h4 className="text-xs font-semibold text-gray-700 mb-2">Season Breakdown</h4>
-            <div className="space-y-1 text-xs max-h-32 overflow-y-auto">
+            <h4 className={`${inModal ? 'text-base' : 'text-xs'} font-semibold text-gray-700 mb-2`}>Season Breakdown</h4>
+            <div className={`space-y-2 ${inModal ? 'text-sm' : 'text-xs'} ${inModal ? 'max-h-48 overflow-y-auto' : ''}`}>
               {chartData.labels.map((label, i) => {
                 const value = chartData.datasets[0].data[i];
                 const percentage = chartData.percentages?.[label] || 0;
                 return (
-                  <div key={label} className="flex justify-between py-1 px-2 bg-gray-50 rounded">
+                  <div key={label} className={`flex justify-between py-2 px-3 bg-gray-50 rounded ${inModal ? 'text-sm' : 'text-xs'}`}>
                     <span className="font-medium text-gray-800 truncate">{label}</span>
                     <span className="text-gray-600 ml-2 flex-shrink-0">
                       {formatCurrency(value)} ({percentage.toFixed(1)}%)
