@@ -2,8 +2,10 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import Plot from "react-plotly.js";
 import { getApiUrl } from "../config/api";
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 const WhoFundsOurTopProjects = ({ inModal = false }) => {
+  const { dateRange } = useDateFilter();
   const [labels, setLabels] = useState([]);
   const [parents, setParents] = useState([]);
   const [values, setValues] = useState([]);
@@ -83,7 +85,21 @@ const WhoFundsOurTopProjects = ({ inModal = false }) => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(getApiUrl("VALUE_CHAIN"));
+        
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        const baseUrl = getApiUrl("VALUE_CHAIN");
+        const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
+        let res = await fetch(url);
+        
+        // If the API doesn't support date filtering, try without date parameters
+        if (!res.ok && res.status === 500) {
+          console.log('WhoFundsOurTopProjects: API returned 500, trying without date parameters');
+          const fallbackUrl = getApiUrl("VALUE_CHAIN");
+          res = await fetch(fallbackUrl);
+        }
+        
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const payload = await res.json();
 
@@ -144,7 +160,7 @@ const WhoFundsOurTopProjects = ({ inModal = false }) => {
       }
     };
     fetchValueChain();
-  }, []);
+  }, [dateRange]);
 
   return (
     <div className="w-full h-full flex flex-col">

@@ -12,12 +12,14 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { getApiUrl } from "../config/api";
 import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
 export default function SuppliersByTotalSpend({ inModal = false }) {
   const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
+  const { dateRange } = useDateFilter();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -54,7 +56,11 @@ export default function SuppliersByTotalSpend({ inModal = false }) {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(getApiUrl('TOP_SUPPLIERS'));
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        const urlWithParams = `${getApiUrl('TOP_SUPPLIERS')}?start_date=${startDate}&end_date=${endDate}`;
+        const response = await fetch(urlWithParams);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -113,7 +119,7 @@ export default function SuppliersByTotalSpend({ inModal = false }) {
     };
 
     fetchSuppliers();
-  }, []);
+  }, [dateRange]);
 
   // 🔹 Sort suppliers ascending (so largest appears at top) and apply filter
   const filteredSuppliers = useMemo(() => {

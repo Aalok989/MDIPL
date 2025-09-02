@@ -3,8 +3,10 @@ import Plot from 'react-plotly.js';
 import { getApiUrl } from '../config/api';
 import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 import useResizeKey from '../hooks/useResizeKey';
+import { useDateFilter } from '../contexts/DateFilterContext';
 
 export default function CustomerHealthChart({ inModal = false }) {
+  const { dateRange } = useDateFilter();
   const { abbreviateLabel } = useLabelAbbreviation(12); // Max ~12 chars
   const resizeKey = useResizeKey(200);
   const [labels, setLabels] = useState([]);
@@ -35,7 +37,13 @@ export default function CustomerHealthChart({ inModal = false }) {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(getApiUrl('CUSTOMER_HEALTH'));
+        
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        const baseUrl = getApiUrl('CUSTOMER_HEALTH');
+        const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
 
@@ -60,7 +68,7 @@ export default function CustomerHealthChart({ inModal = false }) {
     };
 
     fetchHealthScores();
-  }, []);
+  }, [dateRange]);
 
   // Pair and sort by health score (descending) and apply filter
   const filteredData = useMemo(() => {

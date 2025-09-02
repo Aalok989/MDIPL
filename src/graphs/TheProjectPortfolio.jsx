@@ -11,6 +11,7 @@ import {
 } from "chart.js";
 import { getApiUrl } from "../config/api";
 import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale);
 
@@ -27,6 +28,7 @@ function abbreviateLabel(raw, maxLength = 12) {
 }
 
 export default function TheProjectPortfolio({ inModal = false }) {
+  const { dateRange } = useDateFilter();
   const { formatAxisValue } = useLabelAbbreviation();
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +57,13 @@ export default function TheProjectPortfolio({ inModal = false }) {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(getApiUrl("PROJECT_CLUSTERS"));
+        
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        const baseUrl = getApiUrl("PROJECT_CLUSTERS");
+        const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const payload = await res.json();
         const data = payload?.data || payload; // support wrapper
@@ -74,7 +82,7 @@ export default function TheProjectPortfolio({ inModal = false }) {
       }
     };
     fetchClusters();
-  }, []);
+  }, [dateRange]);
 
   // Apply filter to data
   const filteredPoints = useMemo(() => {

@@ -28,8 +28,10 @@ ChartJS.register(
 
 import { getApiUrl } from "../config/api";
 import useResizeKey from "../hooks/useResizeKey";
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 const TotalSalesPerMonth = ({ inModal = false }) => {
+  const { dateRange } = useDateFilter();
   const resizeKey = useResizeKey();
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,12 @@ const TotalSalesPerMonth = ({ inModal = false }) => {
   useEffect(() => {
     const fetchSalesData = async () => {
       try {
-        const response = await fetch(getApiUrl("TOTAL_SALES_PER_MONTH"));
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        const baseUrl = getApiUrl("TOTAL_SALES_PER_MONTH");
+        const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
+        const response = await fetch(url);
         if (!response.ok) throw new Error("Failed to fetch sales data");
         const data = await response.json();
 
@@ -93,7 +100,7 @@ const TotalSalesPerMonth = ({ inModal = false }) => {
     };
 
     fetchSalesData();
-  }, []);
+  }, [dateRange]);
 
   // Apply filter to data
   const filteredData = useMemo(() => {

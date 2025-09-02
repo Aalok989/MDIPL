@@ -12,6 +12,7 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import useResizeKey from "../hooks/useResizeKey";
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 ChartJS.register(
   CategoryScale,
@@ -26,6 +27,7 @@ ChartJS.register(
 
 const ProjectsCompletedByMonths = ({ inModal = false }) => {
   const resizeKey = useResizeKey();
+  const { dateRange } = useDateFilter();
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,13 +54,23 @@ const ProjectsCompletedByMonths = ({ inModal = false }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch("/api/plot_projects_per_month_area");
+      const startDate = dateRange.startDate.toISOString().split('T')[0];
+      const endDate = dateRange.endDate.toISOString().split('T')[0];
+      
+      console.log('ProjectsCompletedByMonths - Date range:', {
+        start_date: startDate,
+        end_date: endDate
+      });
+      
+      const urlWithParams = `/api/plot_projects_per_month_area?start_date=${startDate}&end_date=${endDate}`;
+      const response = await fetch(urlWithParams);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('ProjectsCompletedByMonths - API Response:', data);
       setChartData(data);
     } catch (err) {
       console.error("Error fetching projects per month data:", err);
@@ -66,7 +78,7 @@ const ProjectsCompletedByMonths = ({ inModal = false }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateRange]);
 
   useEffect(() => {
     fetchChartData();
@@ -74,22 +86,66 @@ const ProjectsCompletedByMonths = ({ inModal = false }) => {
 
   // Apply filter to data
   const filteredData = useMemo(() => {
-    if (!chartData || !inModal || nValue === 12) {
+    if (!chartData) {
       return chartData;
     }
     
-    // For time series, show last N months
-    const labels = chartData.labels.slice(-nValue);
-    const datasets = chartData.datasets.map(dataset => ({
-      ...dataset,
-      data: dataset.data.slice(-nValue)
-    }));
+    // Filter data by date range
+    const filteredLabels = [];
+    const filteredDataValues = [];
     
-    return {
-      labels,
-      datasets
+    chartData.labels.forEach((label, index) => {
+      // Parse the label (assuming format like "2024-01" or "Jan 2024")
+      let date;
+      if (label.includes('-')) {
+        // Format: "2024-01"
+        const [year, month] = label.split('-');
+        date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      } else {
+        // Format: "Jan 2024"
+        date = new Date(label);
+      }
+      
+      // Check if date is within the selected range
+      if (date >= dateRange.startDate && date <= dateRange.endDate) {
+        filteredLabels.push(label);
+        filteredDataValues.push(chartData.datasets[0].data[index]);
+      }
+    });
+    
+    const filteredChartData = {
+      labels: filteredLabels,
+      datasets: chartData.datasets.map(dataset => ({
+        ...dataset,
+        data: filteredDataValues
+      }))
     };
-  }, [chartData, nValue, inModal]);
+    
+    // Apply modal filter if needed
+    if (inModal && nValue < 12) {
+      const labels = filteredChartData.labels.slice(-nValue);
+      const datasets = filteredChartData.datasets.map(dataset => ({
+        ...dataset,
+        data: dataset.data.slice(-nValue)
+      }));
+      
+      return {
+        labels,
+        datasets
+      };
+    }
+    
+    console.log('ProjectsCompletedByMonths - Filtered data:', {
+      originalLabels: chartData.labels.length,
+      filteredLabels: filteredLabels.length,
+      dateRange: {
+        start: dateRange.startDate.toISOString().split('T')[0],
+        end: dateRange.endDate.toISOString().split('T')[0]
+      }
+    });
+    
+    return filteredChartData;
+  }, [chartData, nValue, inModal, dateRange]);
 
   const options = {
     responsive: true,

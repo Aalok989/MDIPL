@@ -12,10 +12,12 @@ import { Bar } from "react-chartjs-2";
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { getApiUrl } from '../config/api';
 import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
+import { useDateFilter } from '../contexts/DateFilterContext';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
 export default function TopVendorsChart({ inModal = false }) {
+  const { dateRange } = useDateFilter();
   const { abbreviateLabel } = useLabelAbbreviation(10);
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +45,11 @@ export default function TopVendorsChart({ inModal = false }) {
       setLoading(true);
       setError(null);
       
-      const response = await fetch("/api/plot_top5_vendors_dashboard");
+      const startDate = dateRange.startDate.toISOString().split('T')[0];
+      const endDate = dateRange.endDate.toISOString().split('T')[0];
+      
+      const url = `/api/plot_top5_vendors_dashboard?start_date=${startDate}&end_date=${endDate}`;
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -57,7 +63,7 @@ export default function TopVendorsChart({ inModal = false }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateRange]);
 
   useEffect(() => {
     fetchChartData();

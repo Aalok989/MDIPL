@@ -13,10 +13,46 @@ import {
 
 import { getApiUrl } from "../config/api";
 import useResizeKey from '../hooks/useResizeKey';
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
 
+// Client-side filtering function for date range
+const filterDataByDateRange = (labels, forecast, lower, upper, startDate, endDate) => {
+  const filteredIndices = [];
+  
+  labels.forEach((label, index) => {
+    // Handle different date formats: "YYYY-MM", "MMM YYYY", etc.
+    let labelDate;
+    if (label.includes('-')) {
+      // Format: "YYYY-MM"
+      labelDate = new Date(label + '-01');
+    } else if (label.includes(' ')) {
+      // Format: "MMM YYYY"
+      labelDate = new Date(label + ' 01');
+    } else {
+      // Try to parse as is
+      labelDate = new Date(label);
+    }
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (labelDate >= start && labelDate <= end) {
+      filteredIndices.push(index);
+    }
+  });
+  
+  return {
+    labels: filteredIndices.map(i => labels[i]),
+    forecast: filteredIndices.map(i => forecast[i]),
+    lower: filteredIndices.map(i => lower[i]),
+    upper: filteredIndices.map(i => upper[i])
+  };
+};
+
 const RevenueForecast = ({ inModal = false }) => {
+  const { dateRange } = useDateFilter();
   const [labels, setLabels] = useState([]);
   const [forecast, setForecast] = useState([]);
   const [lower, setLower] = useState([]);
@@ -43,7 +79,25 @@ const RevenueForecast = ({ inModal = false }) => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(getApiUrl('REVENUE_FORECAST'));
+        
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        console.log('RevenueForecast: Fetching data for date range:', { startDate, endDate });
+        
+        const baseUrl = getApiUrl('REVENUE_FORECAST');
+        const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
+        console.log('RevenueForecast: API URL:', url);
+        
+        let res = await fetch(url);
+        
+        // If the API doesn't support date filtering, try without date parameters
+        if (!res.ok && res.status === 500) {
+          console.log('RevenueForecast: API returned 500, trying without date parameters');
+          const fallbackUrl = getApiUrl('REVENUE_FORECAST');
+          res = await fetch(fallbackUrl);
+        }
+        
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const apiLabels = json?.data?.labels || [];
@@ -51,10 +105,13 @@ const RevenueForecast = ({ inModal = false }) => {
         const f = datasets.find(d => /forecast/i.test(d.label))?.data || [];
         const lb = datasets.find(d => /lower/i.test(d.label))?.data || [];
         const ub = datasets.find(d => /upper/i.test(d.label))?.data || [];
-        setLabels(apiLabels);
-        setForecast(f);
-        setLower(lb);
-        setUpper(ub);
+        // Client-side filtering if API doesn't support date filtering
+        const filteredData = filterDataByDateRange(apiLabels, f, lb, ub, startDate, endDate);
+        
+        setLabels(filteredData.labels);
+        setForecast(filteredData.forecast);
+        setLower(filteredData.lower);
+        setUpper(filteredData.upper);
       } catch (e) {
         console.error('Failed to fetch revenue forecast:', e);
         setError(e?.message || 'Failed to load');
@@ -67,7 +124,7 @@ const RevenueForecast = ({ inModal = false }) => {
       }
     };
     fetchForecast();
-  }, []);
+  }, [dateRange]);
 
   const data = {
     labels,

@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import useResizeKey from '../hooks/useResizeKey';
 import { FiEye, FiX } from 'react-icons/fi';
+import DateRangeFilter from './DateRangeFilter';
 
 // Import all graph components
 import SpendBySeasonChart from '../graphs/SpendBySeasonChart';
@@ -29,17 +30,17 @@ import CustomerByHealthScore from '../graphs/CustomerByHealthScore';
 const GraphCard = ({ children, onView }) => {
   return (
     <div className="bg-white p-4 rounded-xl border border-gray-200 hover:shadow-md transition-shadow duration-300 h-full relative">
-      {/* View (expand) control */}
-      <div className="absolute top-3 right-3 flex items-center gap-2">
-        <span className="text-xs text-gray-500 select-none">Detailed view</span>
+      {/* View (expand) control - entire border clickable */}
+      <div className="absolute top-3 right-3 cursor-pointer" onClick={onView}>
         <button
           type="button"
-          aria-label="View"
-          title="View"
+          aria-label="View detailed chart"
+          title="View detailed chart"
           onClick={onView}
-          className="text-gray-500 hover:text-gray-700 focus:outline-none"
+          className="flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-gray-400 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 cursor-pointer shadow-sm hover:shadow-md w-full h-full"
         >
-          <FiEye className="w-5 h-5" />
+          <span className="text-xs select-none font-medium pointer-events-none">Detailed view</span>
+          <FiEye className="w-4 h-4 pointer-events-none" />
         </button>
       </div>
       {children}
@@ -89,9 +90,15 @@ const GraphSection = () => {
       {/* Header (sticky banner, aligned with grid) */}
       <div className="sticky top-0 z-10 mb-6">
         <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/70 backdrop-blur-sm rounded-xl border-b border-gray-200">
-          <div className="text-center px-4 py-3">
-            <h2 className="text-lg md:text-xl font-semibold text-gray-900">Insights & Trends</h2>
-            <p className="text-xs md:text-sm text-gray-500">Interactive charts for performance and risk</p>
+          <div className="flex items-center justify-between px-4 py-3">
+            {/* Left: Title and subtitle */}
+            <div className="text-left">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900">Insights & Trends</h2>
+              <p className="text-xs md:text-sm text-gray-500">Interactive charts for performance and risk</p>
+            </div>
+            
+            {/* Right: Date Range Filter */}
+            <DateRangeFilter />
           </div>
         </div>
       </div>

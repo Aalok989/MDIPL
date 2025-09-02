@@ -12,6 +12,7 @@ import {
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import useResizeKey from "../hooks/useResizeKey";
 import { getApiUrl } from "../config/api";
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 // Register Chart.js components
 ChartJS.register(
@@ -26,6 +27,7 @@ ChartJS.register(
 
 const DayOfWeekSalesChart = ({ inModal = false }) => {
   const resizeKey = useResizeKey();
+  const { dateRange } = useDateFilter();
   const [chartData, setChartData] = useState({ labels: [], values: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,7 +62,11 @@ const DayOfWeekSalesChart = ({ inModal = false }) => {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(getApiUrl("WEEKLY_SALES"));
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        const urlWithParams = `${getApiUrl("WEEKLY_SALES")}?start_date=${startDate}&end_date=${endDate}`;
+        const response = await fetch(urlWithParams);
         if (!response.ok) {
           throw new Error("Failed to fetch API");
         }
@@ -90,7 +96,7 @@ const DayOfWeekSalesChart = ({ inModal = false }) => {
     };
 
     fetchData();
-  }, []);
+  }, [dateRange]);
 
   // Apply filter to data
   const filteredData = useMemo(() => {

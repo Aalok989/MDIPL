@@ -12,12 +12,14 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { getApiUrl } from "../config/api";
 import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
 export default function CustomersByTotalRevenue({ inModal = false }) {
   const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
+  const { dateRange } = useDateFilter();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,7 +46,11 @@ export default function CustomersByTotalRevenue({ inModal = false }) {
         setLoading(true);
         setError(null);
         const baseUrl = getApiUrl('TOP_CUSTOMERS');
-        const response = await fetch(`${baseUrl}?n=${nValue}`);
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        const urlWithParams = `${baseUrl}?n=${nValue}&start_date=${startDate}&end_date=${endDate}`;
+        const response = await fetch(urlWithParams);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -101,7 +107,7 @@ export default function CustomersByTotalRevenue({ inModal = false }) {
     };
 
     fetchCustomers();
-  }, [nValue]);
+  }, [nValue, dateRange]);
 
   // 🔹 Sort customers ascending (so largest appears at top)
   // Ensure customers is always an array before spreading

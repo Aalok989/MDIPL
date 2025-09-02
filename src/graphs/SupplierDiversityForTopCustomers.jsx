@@ -13,6 +13,7 @@ import {
 import { getApiUrl } from "../config/api";
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
+import { useDateFilter } from '../contexts/DateFilterContext';
 
 ChartJS.register(
   CategoryScale,
@@ -25,6 +26,7 @@ ChartJS.register(
 );
 
 export default function SupplierDiversityForTopCustomers({ inModal = false }) {
+  const { dateRange } = useDateFilter();
   const { abbreviateLabel } = useLabelAbbreviation(12);
   const [labels, setLabels] = useState([]);
   const [values, setValues] = useState([]);
@@ -60,7 +62,13 @@ export default function SupplierDiversityForTopCustomers({ inModal = false }) {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(getApiUrl("RISK_ANALYSIS"));
+        
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        const baseUrl = getApiUrl("RISK_ANALYSIS");
+        const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const payload = await res.json();
         const data = payload?.data || payload;
@@ -75,7 +83,7 @@ export default function SupplierDiversityForTopCustomers({ inModal = false }) {
       }
     };
     fetchData();
-  }, []);
+  }, [dateRange]);
 
   // Apply filter to data
   const filteredData = useMemo(() => {

@@ -10,17 +10,24 @@ import {
 } from "chart.js";
 import { getApiUrl } from "../config/api";
 import useResizeKey from '../hooks/useResizeKey';
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 ChartJS.register(LinearScale, PointElement, Tooltip, Legend);
 
 export default function CustomerValueMatrix() {
+  const { dateRange } = useDateFilter();
   const resizeKey = useResizeKey();
   const [chartData, setChartData] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(getApiUrl("CUSTOMER_VALUE_MATRIX"));
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        const baseUrl = getApiUrl("CUSTOMER_VALUE_MATRIX");
+        const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
+        const response = await fetch(url);
         const data = await response.json();
 
         const colors = {
@@ -47,7 +54,7 @@ export default function CustomerValueMatrix() {
     };
 
     fetchData();
-  }, []);
+  }, [dateRange]);
 
   const options = {
     responsive: true,

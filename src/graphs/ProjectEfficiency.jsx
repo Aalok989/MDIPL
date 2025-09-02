@@ -2,8 +2,10 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import Plot from "react-plotly.js";
 import { getApiUrl } from "../config/api";
 import useResizeKey from "../hooks/useResizeKey";
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 const ProjectEfficiency = ({ inModal = false }) => {
+  const { dateRange } = useDateFilter();
   const resizeKey = useResizeKey(200);
   const [projectData, setProjectData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +40,19 @@ const ProjectEfficiency = ({ inModal = false }) => {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(getApiUrl("PROJECT_EFFICIENCY"));
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        const baseUrl = getApiUrl("PROJECT_EFFICIENCY");
+        const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
+        let response = await fetch(url);
+
+        // If the API doesn't support date filtering, try without date parameters
+        if (!response.ok && response.status === 500) {
+          console.log('ProjectEfficiency: API returned 500, trying without date parameters');
+          const fallbackUrl = getApiUrl("PROJECT_EFFICIENCY");
+          response = await fetch(fallbackUrl);
+        }
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -75,7 +89,7 @@ const ProjectEfficiency = ({ inModal = false }) => {
     };
 
     fetchProjectEfficiency();
-  }, []);
+  }, [dateRange]);
 
   // Loading state
   if (loading) {

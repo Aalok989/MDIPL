@@ -9,11 +9,12 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { apiRequest } from "../config/api";
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const TypicalDealSize = ({ inModal = false }) => {
+  const { dateRange } = useDateFilter();
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,7 +24,21 @@ const TypicalDealSize = ({ inModal = false }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await apiRequest("DEAL_SIZE_DISTRIBUTION");
+        
+        // Add date range parameters to the API call
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
+        console.log('TypicalDealSize: Fetching data for date range:', { startDate, endDate });
+        
+        const urlWithParams = `/api/chart_deal_size_distribution?start_date=${startDate}&end_date=${endDate}`;
+        const response = await fetch(urlWithParams);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
 
         // Clean up labels: remove duplicates like "1M-1M", "2M-2M" etc.
         const uniqueLabels = [];
@@ -81,7 +96,7 @@ const TypicalDealSize = ({ inModal = false }) => {
     };
 
     fetchData();
-  }, [binN]);
+  }, [binN, dateRange]);
 
   const options = {
     responsive: true,

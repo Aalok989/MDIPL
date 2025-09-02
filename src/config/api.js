@@ -95,12 +95,24 @@ export const apiRequest = async (endpointKey, options = {}, useCorsProxy = false
     const response = await fetch(url, defaultOptions);
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorMessage = `HTTP error! status: ${response.status}`;
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      error.endpoint = endpointKey;
+      throw error;
     }
     
     return await response.json();
   } catch (error) {
     console.error(`API request failed for ${endpointKey}:`, error);
+    
+    // Enhance error with more context
+    if (!error.endpoint) {
+      error.endpoint = endpointKey;
+    }
+    if (!error.status && error.message?.includes('fetch')) {
+      error.status = 'NETWORK_ERROR';
+    }
     
     // Try different fallback strategies
     if (!useCorsProxy) {

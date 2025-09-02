@@ -12,11 +12,13 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { getApiUrl } from "../config/api";
 import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
 export default function LoyalLegion({ inModal = false, n }) {
+  const { dateRange } = useDateFilter();
   const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
   const [customers, setCustomers] = useState([]);
   const [billCounts, setBillCounts] = useState([]);
@@ -50,8 +52,12 @@ export default function LoyalLegion({ inModal = false, n }) {
       try {
         setLoading(true);
         setError(null);
+        
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        
         const baseUrl = getApiUrl('CUSTOMER_LOYALTY');
-        const url = `${baseUrl}?n=${nValue}`;
+        const url = `${baseUrl}?n=${nValue}&start_date=${startDate}&end_date=${endDate}`;
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -81,7 +87,7 @@ export default function LoyalLegion({ inModal = false, n }) {
     };
 
     fetchCustomerLoyalty();
-  }, [nValue]);
+  }, [nValue, dateRange]);
 
   const data = {
     labels: customers.map(c => c || 'Unknown Customer'),

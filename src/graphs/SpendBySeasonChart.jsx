@@ -8,11 +8,13 @@ import {
   Title,
 } from "chart.js";
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 // Register components
 ChartJS.register(ArcElement, Tooltip, Legend, Title, ChartDataLabels);
 
 const SpendBySeasonChart = ({ inModal = false }) => {
+  const { dateRange } = useDateFilter();
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,7 +27,11 @@ const SpendBySeasonChart = ({ inModal = false }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch("/api/plot-spend-by-indian-seasons");
+      const startDate = dateRange.startDate.toISOString().split('T')[0];
+      const endDate = dateRange.endDate.toISOString().split('T')[0];
+      
+      const urlWithParams = `/api/plot-spend-by-indian-seasons?start_date=${startDate}&end_date=${endDate}`;
+      const response = await fetch(urlWithParams);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -39,7 +45,7 @@ const SpendBySeasonChart = ({ inModal = false }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateRange]);
 
   useEffect(() => {
     fetchChartData();
