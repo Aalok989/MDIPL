@@ -13,6 +13,7 @@ import {
 
 import { getApiUrl } from "../config/api";
 import useResizeKey from '../hooks/useResizeKey';
+import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 import { useDateFilter } from "../contexts/DateFilterContext";
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
@@ -21,6 +22,7 @@ ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip,
 
 const RevenueForecast = ({ inModal = false, modalDateRange = null }) => {
   const { dateRange } = useDateFilter();
+  const { formatAxisValue } = useLabelAbbreviation(12);
   
   // Use modal date range if in modal, otherwise use global date range
   const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
@@ -125,7 +127,13 @@ const RevenueForecast = ({ inModal = false, modalDateRange = null }) => {
     scales: {
       y: {
         beginAtZero: false,
-        title: { display: true, text: "Revenue (₹)" },
+        title: { display: true, text: "Revenue" },
+        ticks: {
+          callback: function(value) {
+            return formatAxisValue(value);
+          },
+          maxTicksLimit: 6,
+        },
       },
       x: {
         title: { display: true, text: "Month" },

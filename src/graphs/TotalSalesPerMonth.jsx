@@ -28,10 +28,12 @@ ChartJS.register(
 
 import { getApiUrl } from "../config/api";
 import useResizeKey from "../hooks/useResizeKey";
+import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 import { useDateFilter } from "../contexts/DateFilterContext";
 
 const TotalSalesPerMonth = ({ inModal = false, modalDateRange = null }) => {
   const { dateRange } = useDateFilter();
+  const { formatAxisValue } = useLabelAbbreviation(12);
   
   // Use modal date range if in modal, otherwise use global date range
   const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
@@ -149,7 +151,14 @@ const TotalSalesPerMonth = ({ inModal = false, modalDateRange = null }) => {
     },
     scales: {
       y: {
-        ticks: { beginAtZero: true },
+        beginAtZero: true,
+        title: { display: true, text: "Sales" },
+        ticks: {
+          callback: function(value) {
+            return formatAxisValue(value);
+          },
+          maxTicksLimit: 6,
+        },
       },
     },
     // Optional: Keep points visible but no labels

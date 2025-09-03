@@ -30,12 +30,16 @@ const useLabelAbbreviation = (maxLength = 12) => {
   const formatAxisValue = useCallback((value) => {
     if (typeof value !== 'number' || isNaN(value)) return value;
     
-    if (value >= 10000000) {
-      return (value / 10000000).toFixed(1) + 'Cr';
-    } else if (value >= 100000) {
-      return (value / 100000).toFixed(1) + 'L';
-    } else if (value >= 1000) {
-      return (value / 1000).toFixed(1) + 'k';
+    const absValue = Math.abs(value);
+    const isNegative = value < 0;
+    const sign = isNegative ? '-' : '';
+    
+    if (absValue >= 10000000) {
+      return sign + (absValue / 10000000).toFixed(1) + 'Cr';
+    } else if (absValue >= 100000) {
+      return sign + (absValue / 100000).toFixed(1) + 'L';
+    } else if (absValue >= 1000) {
+      return sign + (absValue / 1000).toFixed(1) + 'k';
     }
     return value.toString();
   }, []);
