@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import './App.css'
-import Dashboard from './components/dashboard.jsx'
+import Dashboard from './components/Dashboard.jsx'
 import { DateFilterProvider } from './contexts/DateFilterContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import GlobalErrorHandler from './components/GlobalErrorHandler'
