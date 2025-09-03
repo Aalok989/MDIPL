@@ -128,15 +128,17 @@ const ProjectEfficiency = ({ inModal = false }) => {
   const maxR = Math.max(...projectData.map((d) => d.revenue_per_day || 0), 1);
 
   return (
-    <div className="w-full h-full flex flex-col">
-      {/* Title */}
-      <h3 className="text-lg font-semibold text-gray-800 px-4 pt-4 pb-2">
-        Project Efficiency: Revenue vs Duration
-      </h3>
-      <p className="text-xs text-gray-500 px-4 pb-3">Revenue per day across project duration</p>
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`}>
+      {/* Chart Section */}
+      <div className={`w-full ${inModal ? 'flex-shrink-0' : 'h-full'}`}>
+        {/* Title */}
+        <h3 className={`${inModal ? 'text-xl' : 'text-lg'} font-semibold text-gray-800 px-4 pt-4 pb-2`}>
+          Project Efficiency: Revenue vs Duration
+        </h3>
+        <p className="text-xs text-gray-500 px-4 pb-3">Revenue per day across project duration</p>
 
-      {/* Chart */}
-      <div className="flex-1 px-2 pb-2 min-h-0">
+        {/* Chart */}
+        <div className={`flex-1 px-2 pb-2 min-h-0 ${inModal ? 'h-96' : ''}`}>
         <Plot
           key={`${resizeKey}-${projectData.length}`}
           data={[
@@ -187,7 +189,79 @@ const ProjectEfficiency = ({ inModal = false }) => {
           config={{ responsive: true, displayModeBar: false }}
           useResizeHandler
         />
+        </div>
       </div>
+
+      {/* Project Efficiency Analysis Content - Only in Modal View */}
+      {inModal && (
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Project Efficiency Analysis</h4>
+            
+            <div className="space-y-4">
+              <div>
+                <h5 className="text-sm font-semibold text-gray-700 mb-2">Key Insights</h5>
+                
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Majority of Observations Are Small to Medium Scale</p>
+                    <p className="text-sm text-gray-600">Most data points fall in the range X = 0–200 and Y = 0–20M. This cluster indicates that the majority of activities/events are consistent but relatively low in scale.</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Significant Outliers Identified</p>
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm text-gray-600">• X ≈ 400, Y ≈ 55M → The largest outlier, representing an exceptionally high-value case.</p>
+                      <p className="text-sm text-gray-600">• X ≈ 600, Y ≈ 40M → Another outlier, also well above the typical range.</p>
+                      <p className="text-sm text-gray-600">These rare cases contribute disproportionately to total performance.</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Most Influential Contributor</p>
+                    <p className="text-sm text-gray-600">A large yellow bubble at X ≈ 10, Y ≈ 10M stands out. Despite a low X-value, it has both the highest color scale (&gt;500) and the largest bubble size. This suggests a single record with outsized impact, potentially a key customer/product/transaction.</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Color & Size Distribution</p>
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm text-gray-600">• Purple bubbles (~100–150) dominate → many low-intensity contributors.</p>
+                      <p className="text-sm text-gray-600">• Teal/green bubbles (~200–300) form the medium performers cluster.</p>
+                      <p className="text-sm text-gray-600">• Only one strong yellow bubble (&gt;500) → represents the standout high performer.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 p-3 rounded border-l-4 border-blue-500">
+                <h5 className="text-sm font-semibold text-gray-700 mb-2">🔹 Recommendations</h5>
+                
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Focus on Outliers</p>
+                    <p className="text-sm text-gray-600">Investigate the X=400, Y=55M and X=600, Y=40M cases. Understand what drove these extraordinary values (e.g., one-time deals, anomalies, or high-value customers). If repeatable, replicate the success factors; if anomalies, treat them carefully in forecasting.</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Leverage the Standout Contributor</p>
+                    <p className="text-sm text-gray-600">The yellow bubble (X≈10, Y≈10M) is a key driver. Recommendation: Strengthen engagement, retention, or scaling strategies around this contributor.</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Grow the Medium Cluster</p>
+                    <p className="text-sm text-gray-600">The X=50–150, Y=5M–15M cluster represents stable mid-performers. Action: Nurture this segment (e.g., targeted campaigns, loyalty programs, upselling) to gradually move them toward the high-performing group.</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">De-risk Dependence on Few High Performers</p>
+                    <p className="text-sm text-gray-600">Current distribution shows heavy reliance on a few outliers. Recommendation: Diversify performance by expanding the base of mid-range contributors, reducing business risk.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

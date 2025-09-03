@@ -39,6 +39,7 @@ export const API_CONFIG = {
     SUCCESS_BLUEPRINT: '/api/chart_success_blueprint',
     GEOSPATIAL_ANALYSIS: '/api/geospatial_analysis',
     WEEKLY_SALES:'/api/chart_day_of_week_sales',
+    AVAILABLE_DATE_RANGE: '/api/available_date_range',
   }
 
 };

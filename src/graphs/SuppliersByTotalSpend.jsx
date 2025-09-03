@@ -17,9 +17,12 @@ import { useDateFilter } from "../contexts/DateFilterContext";
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
-export default function SuppliersByTotalSpend({ inModal = false }) {
+export default function SuppliersByTotalSpend({ inModal = false, modalDateRange = null }) {
   const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
   const { dateRange } = useDateFilter();
+  
+  // Use modal date range if in modal, otherwise use global date range
+  const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -56,8 +59,8 @@ export default function SuppliersByTotalSpend({ inModal = false }) {
         setLoading(true);
         setError(null);
         
-        const startDate = dateRange.startDate.toISOString().split('T')[0];
-        const endDate = dateRange.endDate.toISOString().split('T')[0];
+              const startDate = currentDateRange.startDate.toISOString().split('T')[0];
+      const endDate = currentDateRange.endDate.toISOString().split('T')[0];
         
         const urlWithParams = `${getApiUrl('TOP_SUPPLIERS')}?start_date=${startDate}&end_date=${endDate}`;
         const response = await fetch(urlWithParams);
@@ -119,7 +122,7 @@ export default function SuppliersByTotalSpend({ inModal = false }) {
     };
 
     fetchSuppliers();
-  }, [dateRange]);
+  }, [currentDateRange]);
 
   // 🔹 Sort suppliers ascending (so largest appears at top) and apply filter
   const filteredSuppliers = useMemo(() => {
@@ -194,7 +197,7 @@ export default function SuppliersByTotalSpend({ inModal = false }) {
         clamp: true,
         clip: true,
         font: { weight: 'bold', size: 10 },
-        formatter: (value) => Number(value).toLocaleString(),
+        formatter: (value) => formatAxisValue(value),
       },
     },
     scales: {
@@ -264,34 +267,75 @@ export default function SuppliersByTotalSpend({ inModal = false }) {
   }
 
   return (
-    <div className={`relative w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
-      {/* Quick select filter - only in modal */}
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+      {/* Chart Section */}
+      <div className={`relative w-full ${inModal ? 'flex-shrink-0' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+        {/* Quick select filter - only in modal */}
+        {inModal && (
+          <div className="absolute top-1 right-12 z-20">
+            <select
+              value={nValue}
+              onChange={(e) => setNValue(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
+              className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
+            >
+              <option value="all">All Suppliers</option>
+              <option value={5}>Top 5</option>
+              <option value={10}>Top 10</option>
+              <option value={15}>Top 15</option>
+              <option value={20}>Top 20</option>
+              <option value={25}>Top 25</option>
+              <option value={30}>Top 30</option>
+            </select>
+          </div>
+        )}
+        
+        <div className={`w-full ${inModal ? 'h-96' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+          <Bar 
+            ref={chartRef}
+            key={`suppliers-${filteredSuppliers.length}`}
+            data={chartData} 
+            options={options} 
+          />
+        </div>
+      </div>
+
+      {/* Weekly Sales Analysis Content - Only in Modal View */}
       {inModal && (
-        <div className="absolute top-1 right-12 z-20">
-          <select
-            value={nValue}
-            onChange={(e) => setNValue(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
-            className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
-          >
-            <option value="all">All Suppliers</option>
-            <option value={5}>Top 5</option>
-            <option value={10}>Top 10</option>
-            <option value={15}>Top 15</option>
-            <option value={20}>Top 20</option>
-            <option value={25}>Top 25</option>
-            <option value={30}>Top 30</option>
-          </select>
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Weekly Sales Pattern Analysis</h4>
+            
+            <div className="space-y-3">
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <p className="text-sm text-gray-600">Slow Start – Monday has the lowest sales (5,000), meaning the week starts off quietly.</p>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <p className="text-sm text-gray-600">Midweek Dip – Wednesday also stays low (6,100), showing midweek slowdown.</p>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <p className="text-sm text-gray-600">Weekend Boost – Friday (9,200) and Saturday (10,500) are the strongest sales days, suggesting customers buy more before the weekend.</p>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <p className="text-sm text-gray-600">Sunday Drop – Sales fall to 7,500 on Sunday, showing people buy less at week's end.</p>
+              </div>
+              
+              <div className="bg-green-50 p-3 rounded border-l-4 border-green-500">
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold">•</span>
+                  <p className="text-sm text-gray-600">Takeaway – Business peaks around Friday–Saturday, so campaigns and promotions should focus there.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
-      
-      <div className={`w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
-        <Bar 
-          ref={chartRef}
-          key={`suppliers-${filteredSuppliers.length}`}
-          data={chartData} 
-          options={options} 
-        />
-      </div>
     </div>
   );
 };

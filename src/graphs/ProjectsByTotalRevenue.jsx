@@ -17,8 +17,11 @@ import { useDateFilter } from "../contexts/DateFilterContext";
 // Register required Chart.js modules
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
-export default function ProjectsByTotalRevenue({ inModal = false, n }) {
+export default function ProjectsByTotalRevenue({ inModal = false, n, modalDateRange = null }) {
   const { dateRange } = useDateFilter();
+  
+  // Use modal date range if in modal, otherwise use global date range
+  const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
   const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
   const [projects, setProjects] = useState([]);
   const [revenues, setRevenues] = useState([]);
@@ -43,8 +46,8 @@ export default function ProjectsByTotalRevenue({ inModal = false, n }) {
       setLoading(true);
       setError(null);
       
-      const startDate = dateRange.startDate.toISOString().split('T')[0];
-      const endDate = dateRange.endDate.toISOString().split('T')[0];
+      const startDate = currentDateRange.startDate.toISOString().split('T')[0];
+      const endDate = currentDateRange.endDate.toISOString().split('T')[0];
       
       const baseUrl = getApiUrl('PROJECT_PROFITABILITY');
       const url = `${baseUrl}?n=${n}&start_date=${startDate}&end_date=${endDate}`;
@@ -89,7 +92,7 @@ export default function ProjectsByTotalRevenue({ inModal = false, n }) {
 
   useEffect(() => {
     fetchProjects(nValue);
-  }, [nValue, dateRange]);
+  }, [nValue, currentDateRange]);
 
   const data = {
     labels: projects.map((p) => p || 'Unknown'),
@@ -162,7 +165,7 @@ export default function ProjectsByTotalRevenue({ inModal = false, n }) {
         clamp: true,
         clip: true,
         font: { weight: 'bold', size: 10 },
-        formatter: (value) => Number(value).toLocaleString(),
+        formatter: (value) => formatAxisValue(value),
       },
     },
     scales: {
@@ -240,10 +243,10 @@ export default function ProjectsByTotalRevenue({ inModal = false, n }) {
   }
 
   return (
-    <div className={inModal ? 'flex flex-col h-full' : ''}>
-      {/* Chart */}
-      <div className={inModal ? 'w-full flex-1' : 'w-full'}>
-        <div style={{ position: 'relative', width: '100%', height: inModal ? '100%' : chartHeight, minHeight: 0, overflow: 'hidden' }}>
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+      {/* Chart Section */}
+      <div className={`relative w-full ${inModal ? 'flex-shrink-0' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+        <div style={{ position: 'relative', width: '100%', height: inModal ? '400px' : chartHeight, minHeight: 0, overflow: 'hidden' }}>
           {inModal && (
             <div className="absolute top-1 right-12 z-20">
               <select
@@ -269,6 +272,34 @@ export default function ProjectsByTotalRevenue({ inModal = false, n }) {
           <Bar ref={chartRef} key={projects.length} data={data} options={options} />
         </div>
       </div>
+
+      {/* Project Revenue Analysis Content - Only in Modal View */}
+      {inModal && (
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Project Revenue Analysis</h4>
+            
+            <div className="space-y-3">
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <p className="text-sm text-gray-600">Shows projects that generated the most revenue.</p>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <p className="text-sm text-gray-600">Example: Dolvi Labour Accommodation (₹56.3 Cr) and TPCI Indirapuram (₹43.8 Cr) are your top "cash cows."</p>
+              </div>
+              
+              <div className="bg-green-50 p-3 rounded border-l-4 border-green-500">
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold">•</span>
+                  <p className="text-sm text-gray-600">Use case: Tells you which projects are worth replicating — they set a benchmark for future bids.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

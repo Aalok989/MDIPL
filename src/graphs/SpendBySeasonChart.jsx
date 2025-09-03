@@ -13,11 +13,14 @@ import { useDateFilter } from "../contexts/DateFilterContext";
 // Register components
 ChartJS.register(ArcElement, Tooltip, Legend, Title, ChartDataLabels);
 
-const SpendBySeasonChart = ({ inModal = false }) => {
+const SpendBySeasonChart = ({ inModal = false, modalDateRange = null }) => {
   const { dateRange } = useDateFilter();
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Use modal date range if in modal, otherwise use global date range
+  const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
 
   // Chart height for responsive layout
   const chartHeight = inModal ? 400 : 400;
@@ -27,8 +30,8 @@ const SpendBySeasonChart = ({ inModal = false }) => {
       setLoading(true);
       setError(null);
       
-      const startDate = dateRange.startDate.toISOString().split('T')[0];
-      const endDate = dateRange.endDate.toISOString().split('T')[0];
+      const startDate = currentDateRange.startDate.toISOString().split('T')[0];
+      const endDate = currentDateRange.endDate.toISOString().split('T')[0];
       
       const urlWithParams = `/api/plot-spend-by-indian-seasons?start_date=${startDate}&end_date=${endDate}`;
       const response = await fetch(urlWithParams);
@@ -45,7 +48,7 @@ const SpendBySeasonChart = ({ inModal = false }) => {
     } finally {
       setLoading(false);
     }
-  }, [dateRange]);
+  }, [currentDateRange]);
 
   useEffect(() => {
     fetchChartData();
@@ -162,7 +165,7 @@ const SpendBySeasonChart = ({ inModal = false }) => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`}>
       {/* Title & Subtitle */}
       <h3 className={`${inModal ? 'text-xl' : 'text-lg'} font-semibold text-gray-800 mb-3 px-4`}>Spend by Season</h3>
 
@@ -223,6 +226,96 @@ const SpendBySeasonChart = ({ inModal = false }) => {
           ))}
         </div>
       </div>
+
+      {/* Summary Content - Only in Modal View */}
+      {inModal && (
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Why This Visualization Was Created</h4>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="font-medium text-gray-700">Purpose:</p>
+                <p className="text-sm text-gray-600">To show how spending varies by season, helping company plan resources and avoid costs from seasonal spikes.</p>
+              </div>
+              
+              <div>
+                <p className="font-medium text-gray-700">Why It Matters:</p>
+                <p className="text-sm text-gray-600">Highlights when spending peaks (e.g., monsoon) for better budgeting and vendor deals.</p>
+              </div>
+            </div>
+
+            <div>
+              <h5 className="text-base font-semibold text-gray-800 mb-3">What the Chart Explains</h5>
+              <div className="space-y-3">
+                <div className="bg-white p-3 rounded border-l-4 border-orange-500">
+                  <p className="font-medium text-gray-700">1. Monsoon (₹34.31 Cr, 35.9%): Biggest spend, likely due to rush orders before rains.</p>
+                  <p className="text-sm text-gray-600 mt-1">• Insight: High costs may mean inefficiencies.</p>
+                </div>
+                
+                <div className="bg-white p-3 rounded border-l-4 border-blue-500">
+                  <p className="font-medium text-gray-700">2. Summer (₹23.06 Cr, 24.1%): Steady spend, good for construction.</p>
+                  <p className="text-sm text-gray-600 mt-1">• Insight: Reliable season for projects.</p>
+                </div>
+                
+                <div className="bg-white p-3 rounded border-l-4 border-green-500">
+                  <p className="font-medium text-gray-700">3. Autumn (₹19.48 Cr, 20.4%) & Winter (₹18.70 Cr, 19.6%): Lower spend, possibly slower activity.</p>
+                  <p className="text-sm text-gray-600 mt-1">• Insight: Chance to save or reallocate resources.</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h5 className="text-base font-semibold text-gray-800 mb-3">Business Insights</h5>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold">•</span>
+                  <p className="text-sm text-gray-600">Spike in Monsoon: 35.9% spend suggests weather delays or urgency.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold">•</span>
+                  <p className="text-sm text-gray-600">Optimization: Leveling spend could save ₹2-3 Cr yearly.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold">•</span>
+                  <p className="text-sm text-gray-600">Risk: 60% spend in first half (Monsoon + Summer) may strain cash flow.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold">•</span>
+                  <p className="text-sm text-gray-600">Forecast: Expect a 2026 monsoon peak (~₹35 Cr).</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h5 className="text-base font-semibold text-gray-800 mb-3">Recommendations</h5>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold">1.</span>
+                  <p className="text-sm text-gray-600">Plan Ahead: Stock materials before monsoon to save ₹1-2 Cr.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold">2.</span>
+                  <p className="text-sm text-gray-600">Balance Work: Move tasks to Autumn/Winter for better deals.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold">3.</span>
+                  <p className="text-sm text-gray-600">Speed Up Approvals: Reduce pending POs to improve cash flow by ₹2-3 Cr.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold">4.</span>
+                  <p className="text-sm text-gray-600">Local Adjustments: Adjust plans for hubs like Dholera based on weather.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 p-3 rounded border-l-4 border-blue-500">
+              <h5 className="text-base font-semibold text-gray-800 mb-2">Summary</h5>
+              <p className="text-sm text-gray-600">The chart shows a monsoon-driven spend pattern, guiding company to save costs and plan better.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

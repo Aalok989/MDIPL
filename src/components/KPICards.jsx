@@ -2,17 +2,22 @@ import React, { useEffect, useState, useCallback } from "react";
 import { FiUsers, FiFolder, FiTrendingUp, FiStar } from "react-icons/fi";
 import mdiplLogo from "../assets/MDIPL Logo.png";
 import GeoMap from "../components/GeoMap";
+import { useDateFilter } from "../contexts/DateFilterContext";
 
 const Sidebar = () => {
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { dateRange } = useDateFilter();
 
   const fetchKPIs = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/kpis");
+      const startDate = dateRange.startDate.toISOString().split('T')[0];
+      const endDate = dateRange.endDate.toISOString().split('T')[0];
+      const url = `/api/kpis?start_date=${startDate}&end_date=${endDate}`;
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -24,7 +29,7 @@ const Sidebar = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateRange]);
 
   useEffect(() => {
     fetchKPIs();

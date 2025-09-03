@@ -4,8 +4,11 @@ import Plot from "react-plotly.js";
 import { getApiUrl } from "../config/api";
 import { useDateFilter } from "../contexts/DateFilterContext";
 
-const WhoFundsOurTopProjects = ({ inModal = false }) => {
+const WhoFundsOurTopProjects = ({ inModal = false, modalDateRange = null }) => {
   const { dateRange } = useDateFilter();
+  
+  // Use modal date range if in modal, otherwise use global date range
+  const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
   const [labels, setLabels] = useState([]);
   const [parents, setParents] = useState([]);
   const [values, setValues] = useState([]);
@@ -86,8 +89,8 @@ const WhoFundsOurTopProjects = ({ inModal = false }) => {
         setLoading(true);
         setError(null);
         
-        const startDate = dateRange.startDate.toISOString().split('T')[0];
-        const endDate = dateRange.endDate.toISOString().split('T')[0];
+              const startDate = currentDateRange.startDate.toISOString().split('T')[0];
+      const endDate = currentDateRange.endDate.toISOString().split('T')[0];
         
         const baseUrl = getApiUrl("VALUE_CHAIN");
         const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
@@ -160,41 +163,118 @@ const WhoFundsOurTopProjects = ({ inModal = false }) => {
       }
     };
     fetchValueChain();
-  }, [dateRange]);
+  }, [currentDateRange]);
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <h2 className="text-lg font-semibold mb-3">Who Funds Our Top Projects? A Customer Breakdown</h2>
-      {loading ? (
-        <div className="text-center text-gray-500">Loading sunburst data...</div>
-      ) : error ? (
-        <div className="text-center text-red-500">{error}</div>
-      ) : (
-        <div className="flex-1 min-h-0">
-          <Plot
-            data={[
-              {
-                type: "sunburst",
-                labels,
-                parents,
-                values,
-                branchvalues: "total",
-                textinfo: "label+value",
-                marker: { 
-                  colors: colors,
-                  line: { width: 2, color: "#ffffff" } 
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`} style={inModal ? {} : { height: '400px' }}>
+      {/* Chart Section */}
+      <div className={`w-full ${inModal ? 'flex-shrink-0' : 'h-full'}`} style={inModal ? {} : { height: '400px' }}>
+        <h2 className={`${inModal ? 'text-xl' : 'text-lg'} font-semibold mb-3`}>Who Funds Our Top Projects? A Customer Breakdown</h2>
+        {loading ? (
+          <div className="text-center text-gray-500">Loading sunburst data...</div>
+        ) : error ? (
+          <div className="text-center text-red-500">{error}</div>
+        ) : (
+          <div className={`flex-1 min-h-0`} style={inModal ? {} : { height: 'calc(100% - 60px)' }}>
+            <Plot
+              data={[
+                {
+                  type: "sunburst",
+                  labels,
+                  parents,
+                  values,
+                  branchvalues: "total",
+                  textinfo: "label+value",
+                  marker: { 
+                    colors: colors,
+                    line: { width: 2, color: "#ffffff" } 
+                  },
                 },
-              },
-            ]}
-            layout={{
-              margin: { l: 10, r: 10, t: 40, b: 10 },
-              height: inModal ? undefined : 400, // Fixed height for regular view, responsive for modal
-              autosize: true,
-            }}
-            style={{ width: "100%", height: inModal ? "100%" : "400px" }}
-            config={{ responsive: true }}
-            useResizeHandler={true}
-          />
+              ]}
+              layout={{
+                margin: { l: 10, r: 10, t: 40, b: 10 },
+                height: inModal ? 400 : 400, // Fixed height for both views
+                autosize: true,
+              }}
+              style={{ width: "100%", height: inModal ? "400px" : "400px" }}
+              config={{ responsive: true }}
+              useResizeHandler={true}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Funding Analysis Content - Only in Modal View */}
+      {inModal && (
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Funding Analysis</h4>
+            
+            <div className="space-y-4">
+              <div>
+                <h5 className="text-sm font-semibold text-gray-700 mb-2">Key Numbers & Insights</h5>
+                
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Total Funding</p>
+                    <p className="text-sm text-gray-600">Overall funding: ₹317.7M (in crores if converted to INR units).</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Top Contributors</p>
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm text-gray-600">• L&T Minerals and Metals → ₹56,330,582.27</p>
+                      <p className="text-sm text-gray-600">  This is the largest single contributor, funding ~18% of total projects.</p>
+                      <p className="text-sm text-gray-600">• UTCL Rawan → ₹52,051,971.04</p>
+                      <p className="text-sm text-gray-600">  Second-largest, contributing ~16%.</p>
+                      <p className="text-sm text-gray-600">• TATA Projects → ₹37,052,841.28</p>
+                      <p className="text-sm text-gray-600">  Third-largest, ~12%.</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Notable Sub-Projects</p>
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm text-gray-600">• TPCI – PEB Shed Indirapuram → ₹43,885,218.47</p>
+                      <p className="text-sm text-gray-600">• L&T TPCI Project Indirapuram → ₹43,883,281.67</p>
+                      <p className="text-sm text-gray-600">Both are individual sub-projects with funding &gt;43M, making them significant stand-alone contributors.</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Other Contributors</p>
+                    <p className="text-sm text-gray-600">L&T Construction, L&T Turnkey, UltraTech Cement, and other sub-projects contribute in the 20M–30M range each. These form the mid-tier contributors.</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 p-3 rounded border-l-4 border-green-500">
+                <h5 className="text-sm font-semibold text-gray-700 mb-2">Recommendations</h5>
+                
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Strengthen Partnerships with Top 3 Funders</p>
+                    <p className="text-sm text-gray-600">Maintain strong engagement with L&T Minerals & Metals, UTCL Rawan, and TATA Projects, since they contribute ~46% of funding.</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Monitor Dependence Risk</p>
+                    <p className="text-sm text-gray-600">Heavy reliance on a few large funders is a business risk. Explore opportunities to diversify funding sources further.</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Replicate Success of Indirapuram Projects</p>
+                    <p className="text-sm text-gray-600">The two 43M+ projects indicate successful funding models. Analyze their execution to apply best practices across future projects.</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Nurture Mid-Tier Contributors</p>
+                    <p className="text-sm text-gray-600">L&T Construction, UltraTech, and other contributors (20M–30M range) show growth potential. With focused engagement, they could scale up to top-tier contributors.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

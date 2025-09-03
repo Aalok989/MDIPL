@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import useResizeKey from '../hooks/useResizeKey';
 import { FiEye, FiX } from 'react-icons/fi';
 import DateRangeFilter from './DateRangeFilter';
+import ModalDateRangeFilter from './ModalDateRangeFilter';
 
 // Import all graph components
 import SpendBySeasonChart from '../graphs/SpendBySeasonChart';
@@ -30,19 +31,18 @@ import CustomerByHealthScore from '../graphs/CustomerByHealthScore';
 const GraphCard = ({ children, onView }) => {
   return (
     <div className="bg-white p-4 rounded-xl border border-gray-200 hover:shadow-md transition-shadow duration-300 h-full relative">
-      {/* View (expand) control - entire border clickable */}
-      <div className="absolute top-3 right-3 cursor-pointer" onClick={onView}>
-        <button
-          type="button"
-          aria-label="View detailed chart"
-          title="View detailed chart"
-          onClick={onView}
-          className="flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-gray-400 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 cursor-pointer shadow-sm hover:shadow-md w-full h-full"
-        >
-          <span className="text-xs select-none font-medium pointer-events-none">Detailed view</span>
-          <FiEye className="w-4 h-4 pointer-events-none" />
-        </button>
-      </div>
+      {/* View (expand) control - entire button clickable */}
+      <button
+        type="button"
+        aria-label="View detailed chart"
+        title="View detailed chart"
+        onClick={onView}
+        className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2 py-1.5 rounded-md border border-gray-300 bg-white/90 hover:bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm cursor-pointer backdrop-blur-sm flex-shrink-0"
+        style={{ pointerEvents: 'auto' }}
+      >
+        <span className="text-xs text-gray-600 select-none font-medium">View</span>
+        <FiEye className="w-4 h-4 text-gray-600" />
+      </button>
       {children}
     </div>
   );
@@ -51,15 +51,21 @@ const GraphCard = ({ children, onView }) => {
 const GraphSection = () => {
   const resizeKey = useResizeKey();
   const [selectedChartKey, setSelectedChartKey] = useState(null);
+  const [modalDateRange, setModalDateRange] = useState({
+    startDate: new Date(2000, 0, 1),
+    endDate: new Date()
+  });
 
   const openModal = useCallback((key) => {
     setSelectedChartKey(key);
   }, []);
 
-  // Chart-owned controls: GraphSection does not track per-chart filters
-
   const closeModal = useCallback(() => {
     setSelectedChartKey(null);
+  }, []);
+
+  const handleModalDateRangeChange = useCallback((startDate, endDate) => {
+    setModalDateRange({ startDate, endDate });
   }, []);
   const charts = [
     { key: 'spend-by-season', Component: SpendBySeasonChart },
@@ -131,13 +137,20 @@ const GraphSection = () => {
               <FiX className="w-6 h-6" />
             </button>
             {/* Chart content area */}
-            <div className="w-full h-full p-3 flex flex-col gap-3">
-              <div className="w-full h-full">
+            <div className="w-full h-full p-3 flex flex-col gap-3 overflow-hidden">
+              {/* Modal Date Range Filter */}
+              <ModalDateRangeFilter 
+                onDateRangeChange={handleModalDateRangeChange}
+                initialStartDate={modalDateRange.startDate}
+                initialEndDate={modalDateRange.endDate}
+              />
+              
+              <div className="w-full flex-1 min-h-0 overflow-y-auto">
                 {(() => {
                   const found = charts.find(c => c.key === selectedChartKey);
                   if (!found) return null;
                   const Selected = found.Component;
-                  return <Selected inModal />;
+                  return <Selected inModal modalDateRange={modalDateRange} />;
                 })()}
               </div>
             </div>

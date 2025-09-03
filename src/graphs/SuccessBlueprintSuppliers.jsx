@@ -4,9 +4,12 @@ import { apiRequest } from "../config/api";
 import useResizeKey from "../hooks/useResizeKey";
 import useLabelAbbreviation from "../hooks/useLabelAbbreviation";
 
-export default function SuccessBlueprintSuppliers({ inModal = false }) {
+export default function SuccessBlueprintSuppliers({ inModal = false, modalDateRange = null }) {
   const resizeKey = useResizeKey(200);
   const { abbreviateLabel } = useLabelAbbreviation(12);
+  
+  // Use modal date range if in modal, otherwise use global date range
+  const currentDateRange = inModal && modalDateRange ? modalDateRange : { startDate: new Date(2000, 0, 1), endDate: new Date() };
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -93,22 +96,54 @@ export default function SuccessBlueprintSuppliers({ inModal = false }) {
   }
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3 px-4 pt-4">
-        <h2 className="text-base font-semibold text-gray-800">
-          Success Blueprint — Top Supplier Contributors
-        </h2>
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`} style={inModal ? {} : { height: '400px' }}>
+      {/* Chart Section */}
+      <div className={`w-full ${inModal ? 'flex-shrink-0' : 'h-full'}`} style={inModal ? {} : { height: '400px' }}>
+        <div className="flex items-center justify-between mb-3 px-4 pt-4">
+          <h2 className={`${inModal ? 'text-xl' : 'text-base'} font-semibold text-gray-800`}>
+            Success Blueprint — Top Supplier Contributors
+          </h2>
+        </div>
+        <div className={`flex-1 min-h-0 px-4 ${inModal ? 'pb-4' : 'pb-4'}`}>
+          <Plot
+            key={`${resizeKey}-${chartData ? 'loaded' : 'loading'}`}
+            data={[chartData]}
+            layout={layout}
+            config={config}
+            style={{ width: "100%", height: inModal ? "400px" : "320px" }}
+            useResizeHandler
+          />
+        </div>
       </div>
-      <div className="flex-1 min-h-0 px-4 pb-4">
-        <Plot
-          key={`${resizeKey}-${chartData ? 'loaded' : 'loading'}`}
-          data={[chartData]}
-          layout={layout}
-          config={config}
-          style={{ width: "100%", height: inModal ? "100%" : "320px" }}
-          useResizeHandler
-        />
-      </div>
+
+      {/* Success Blueprint Suppliers Analysis Content - Only in Modal View */}
+      {inModal && (
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Success Blueprint Suppliers Analysis</h4>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Story:</p>
+                <p className="text-sm text-gray-600">This treemap identifies top suppliers by spend, showing concentration and dependency.</p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-700">Observation:</p>
+                <div className="ml-4 space-y-1">
+                  <p className="text-sm text-gray-600">• Shri Shyam Steel represents a large dependency risk.</p>
+                  <p className="text-sm text-gray-600">• Some suppliers have moderate contributions, indicating diversified sources.</p>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 p-3 rounded border-l-4 border-green-500">
+                <p className="text-sm font-medium text-gray-700">Recommendation:</p>
+                <p className="text-sm text-gray-600">Diversify procurement to reduce supplier concentration risk while maintaining strong relationships with top spend suppliers.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

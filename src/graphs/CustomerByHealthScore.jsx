@@ -5,8 +5,11 @@ import useLabelAbbreviation from '../hooks/useLabelAbbreviation';
 import useResizeKey from '../hooks/useResizeKey';
 import { useDateFilter } from '../contexts/DateFilterContext';
 
-export default function CustomerHealthChart({ inModal = false }) {
+export default function CustomerHealthChart({ inModal = false, modalDateRange = null }) {
   const { dateRange } = useDateFilter();
+  
+  // Use modal date range if in modal, otherwise use global date range
+  const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
   const { abbreviateLabel } = useLabelAbbreviation(12); // Max ~12 chars
   const resizeKey = useResizeKey(200);
   const [labels, setLabels] = useState([]);
@@ -38,8 +41,8 @@ export default function CustomerHealthChart({ inModal = false }) {
         setLoading(true);
         setError(null);
         
-        const startDate = dateRange.startDate.toISOString().split('T')[0];
-        const endDate = dateRange.endDate.toISOString().split('T')[0];
+              const startDate = currentDateRange.startDate.toISOString().split('T')[0];
+      const endDate = currentDateRange.endDate.toISOString().split('T')[0];
         
         const baseUrl = getApiUrl('CUSTOMER_HEALTH');
         const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
@@ -68,7 +71,7 @@ export default function CustomerHealthChart({ inModal = false }) {
     };
 
     fetchHealthScores();
-  }, [dateRange]);
+  }, [currentDateRange]);
 
   // Pair and sort by health score (descending) and apply filter
   const filteredData = useMemo(() => {
@@ -97,8 +100,8 @@ export default function CustomerHealthChart({ inModal = false }) {
     width: 0.6,
     marker: {
       color: y,
-      colorscale: 'RdYlGn',
-      reversescale: false,
+      colorscale: 'Greens',
+      reversescale: true,
       line: {
         width: 1,
         color: '#f0f0f0',
@@ -174,48 +177,77 @@ export default function CustomerHealthChart({ inModal = false }) {
   }
 
   return (
-    <div className="w-full h-full flex flex-col">
-      {/* Quick select filter - only in modal */}
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`} style={inModal ? {} : { height: '400px' }}>
+      {/* Chart Section */}
+      <div className={`relative w-full ${inModal ? 'flex-shrink-0' : 'h-full'}`} style={inModal ? {} : { height: '400px' }}>
+        {/* Quick select filter - only in modal */}
+        {inModal && (
+          <div className="absolute top-1 right-12 z-20">
+            <select
+              value={nValue}
+              onChange={(e) => setNValue(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
+              className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
+            >
+              <option value="all">All Customers</option>
+              <option value={20}>Top 20</option>
+              <option value={15}>Top 15</option>
+              <option value={10}>Top 10</option>
+              <option value={5}>Top 5</option>
+            </select>
+          </div>
+        )}
+        
+        <div className="flex items-center justify-between mb-3 px-4 pt-4">
+          <h2 className="text-base font-semibold text-gray-800">
+            Customer Health — Top {filteredData.length}
+          </h2>
+          {error && (
+            <button
+              onClick={() => window.location.reload()}
+              className="text-xs text-red-500 underline hover:text-red-600 transition-colors"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+        
+        <div className={`flex-1 min-h-0 px-4 ${inModal ? 'pb-4' : 'pb-4'}`}>
+          <Plot
+            key={`${resizeKey}-${filteredData.length}`}
+            data={[trace]}
+            layout={layout}
+            config={config}
+            style={{ width: '100%', height: inModal ? '400px' : `${layout.height}px` }}
+            useResizeHandler
+          />
+        </div>
+      </div>
+
+      {/* Customer Health Analysis Content - Only in Modal View */}
       {inModal && (
-        <div className="absolute top-1 right-12 z-20">
-          <select
-            value={nValue}
-            onChange={(e) => setNValue(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
-            className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
-          >
-            <option value="all">All Customers</option>
-            <option value={20}>Top 20</option>
-            <option value={15}>Top 15</option>
-            <option value={10}>Top 10</option>
-            <option value={5}>Top 5</option>
-          </select>
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Customer Health Analysis</h4>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Story:</p>
+                <p className="text-sm text-gray-600">This bar chart ranks the top 15 customers by contribution or activity, highlighting revenue importance and engagement.</p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-700">Observation:</p>
+                <p className="text-sm text-gray-600">L&T Minerals appears as the top contributor, followed by a mix of other moderately active customers.</p>
+              </div>
+              
+              <div className="bg-green-50 p-3 rounded border-l-4 border-green-500">
+                <p className="text-sm font-medium text-gray-700">Recommendation:</p>
+                <p className="text-sm text-gray-600">Focus retention strategies on top contributors, automate engagement for lower-tier customers, and identify opportunities for upselling.</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
-      
-      <div className="flex items-center justify-between mb-3 px-4 pt-4">
-        <h2 className="text-base font-semibold text-gray-800">
-          Customer Health — Top {filteredData.length}
-        </h2>
-        {error && (
-          <button
-            onClick={() => window.location.reload()}
-            className="text-xs text-red-500 underline hover:text-red-600 transition-colors"
-          >
-            Retry
-          </button>
-        )}
-      </div>
-      
-      <div className="flex-1 min-h-0 px-4 pb-4">
-        <Plot
-          key={`${resizeKey}-${filteredData.length}`}
-          data={[trace]}
-          layout={layout}
-          config={config}
-          style={{ width: '100%', height: inModal ? '100%' : `${layout.height}px` }}
-          useResizeHandler
-        />
-      </div>
     </div>
   );
 }

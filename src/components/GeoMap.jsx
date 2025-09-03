@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, GeoJSON, Marker, Popup, Tooltip, useMap } from
 import L from 'leaflet';
 import { getApiUrl } from '../config/api';
 import LoadingScreen from './LoadingScreen';
+import { useDateFilter } from '../contexts/DateFilterContext';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default markers in react-leaflet
@@ -46,7 +47,7 @@ const FitBounds = ({ points }) => {
 
 // Create custom icons for different entity types (matching original symbols)
 const createCustomIcon = (type, size) => {
-  const typeToColor = { Customer: 'dodgerblue', Vendor: 'gold', Project: 'magenta' };
+  const typeToColor = { Customer: 'dodgerblue', Vendor: 'orange', Project: 'magenta' };
   const typeToSymbol = { Customer: 'square', Vendor: 'circle', Project: 'star' };
   
   const color = typeToColor[type] || 'dodgerblue';
@@ -142,6 +143,7 @@ const GeoMap = () => {
   const [loading, setLoading] = useState(true);
   const [mapConfig, setMapConfig] = useState({ center: { lat: 22.5937, lon: 78.9629 }, zoom: 4 });
   const [legendFilters, setLegendFilters] = useState({ Customer: true, Vendor: true, Project: true });
+  const { dateRange } = useDateFilter();
 
   const CITY_COORDS = useMemo(() => ({
     'FARIDABAD': { lat: 28.4089, lon: 77.3178 },
@@ -180,7 +182,11 @@ const GeoMap = () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(getApiUrl('GEOSPATIAL_ANALYSIS'));
+        const startDate = dateRange.startDate.toISOString().split('T')[0];
+        const endDate = dateRange.endDate.toISOString().split('T')[0];
+        const baseUrl = getApiUrl('GEOSPATIAL_ANALYSIS');
+        const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const response = await res.json();
 
@@ -211,7 +217,7 @@ const GeoMap = () => {
     };
 
     fetchData();
-  }, [geocodeRecord]);
+  }, [geocodeRecord, dateRange]);
 
   useEffect(() => {
     fetch('/india_states.json')
@@ -344,7 +350,7 @@ const GeoMap = () => {
           }}
         >
                      <div className="space-y-1">
-             {Object.entries({ Customer: 'dodgerblue', Vendor: 'gold', Project: 'magenta' }).map(([type, color]) => {
+             {Object.entries({ Customer: 'dodgerblue', Vendor: 'orange', Project: 'magenta' }).map(([type, color]) => {
               const getIcon = () => {
                 switch (type) {
                   case 'Customer':

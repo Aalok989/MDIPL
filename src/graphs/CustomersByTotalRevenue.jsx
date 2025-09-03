@@ -17,9 +17,12 @@ import { useDateFilter } from "../contexts/DateFilterContext";
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
-export default function CustomersByTotalRevenue({ inModal = false }) {
+export default function CustomersByTotalRevenue({ inModal = false, modalDateRange = null }) {
   const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
   const { dateRange } = useDateFilter();
+  
+  // Use modal date range if in modal, otherwise use global date range
+  const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,8 +49,8 @@ export default function CustomersByTotalRevenue({ inModal = false }) {
         setLoading(true);
         setError(null);
         const baseUrl = getApiUrl('TOP_CUSTOMERS');
-        const startDate = dateRange.startDate.toISOString().split('T')[0];
-        const endDate = dateRange.endDate.toISOString().split('T')[0];
+              const startDate = currentDateRange.startDate.toISOString().split('T')[0];
+      const endDate = currentDateRange.endDate.toISOString().split('T')[0];
         
         const urlWithParams = `${baseUrl}?n=${nValue}&start_date=${startDate}&end_date=${endDate}`;
         const response = await fetch(urlWithParams);
@@ -107,7 +110,7 @@ export default function CustomersByTotalRevenue({ inModal = false }) {
     };
 
     fetchCustomers();
-  }, [nValue, dateRange]);
+  }, [nValue, currentDateRange]);
 
   // 🔹 Sort customers ascending (so largest appears at top)
   // Ensure customers is always an array before spreading
@@ -200,7 +203,7 @@ export default function CustomersByTotalRevenue({ inModal = false }) {
         clamp: true,
         clip: true,
         font: { weight: 'bold', size: 10 },
-        formatter: (value) => Number(value).toLocaleString(),
+        formatter: (value) => formatAxisValue(value),
       },
     },
     scales: {
@@ -292,34 +295,65 @@ export default function CustomersByTotalRevenue({ inModal = false }) {
   }
 
   return (
-    <div className={`relative w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
-      {/* Quick select filter - only in modal */}
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+      {/* Chart Section */}
+      <div className={`relative w-full ${inModal ? 'flex-shrink-0' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+        {/* Quick select filter - only in modal */}
+        {inModal && (
+          <div className="absolute top-1 right-12 z-20">
+            <select
+              value={nValue}
+              onChange={(e) => {
+                const val = e.target.value;
+                setNValue(val === 'all' ? 100 : parseInt(val, 10));
+              }}
+              className="px-2 py-1 border border-gray-300 rounded text-xs bg-white shadow-sm"
+              title="Quick select"
+            >
+              <option value="all">All</option>
+              <option value={5}>Top 5</option>
+              <option value={10}>Top 10</option>
+              <option value={15}>Top 15</option>
+              <option value={20}>Top 20</option>
+              <option value={25}>Top 25</option>
+              <option value={30}>Top 30</option>
+              <option value={50}>Top 50</option>
+            </select>
+          </div>
+        )}
+        
+        <div className={`w-full ${inModal ? 'h-96' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+          <Bar ref={chartRef} data={data} options={options} />
+        </div>
+      </div>
+
+      {/* Customer Revenue Analysis Content - Only in Modal View */}
       {inModal && (
-        <div className="absolute top-1 right-12 z-20">
-          <select
-            value={nValue}
-            onChange={(e) => {
-              const val = e.target.value;
-              setNValue(val === 'all' ? 100 : parseInt(val, 10));
-            }}
-            className="px-2 py-1 border border-gray-300 rounded text-xs bg-white shadow-sm"
-            title="Quick select"
-          >
-            <option value="all">All</option>
-            <option value={5}>Top 5</option>
-            <option value={10}>Top 10</option>
-            <option value={15}>Top 15</option>
-            <option value={20}>Top 20</option>
-            <option value={25}>Top 25</option>
-            <option value={30}>Top 30</option>
-            <option value={50}>Top 50</option>
-          </select>
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Customer Revenue Analysis</h4>
+            
+            <div className="space-y-3">
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <p className="text-sm text-gray-600">Shows the highest revenue-generating customers.</p>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <p className="text-sm text-gray-600">Example: L&T Minerals and Metals is your biggest whale, contributing ₹79.02 Cr, while others like L&T Construction and UltraTech also bring large chunks.</p>
+              </div>
+              
+              <div className="bg-green-50 p-3 rounded border-l-4 border-green-500">
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold">•</span>
+                  <p className="text-sm text-gray-600">Use case: Helps identify your "whale clients" who bring the most money — these require strong relationship management to retain.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
-      
-      <div className={`w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
-        <Bar ref={chartRef} data={data} options={options} />
-      </div>
     </div>
   );
 };

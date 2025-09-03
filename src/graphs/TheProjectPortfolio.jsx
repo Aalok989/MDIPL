@@ -27,8 +27,11 @@ function abbreviateLabel(raw, maxLength = 12) {
   return out + '…';
 }
 
-export default function TheProjectPortfolio({ inModal = false }) {
+export default function TheProjectPortfolio({ inModal = false, modalDateRange = null }) {
   const { dateRange } = useDateFilter();
+  
+  // Use modal date range if in modal, otherwise use global date range
+  const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
   const { formatAxisValue } = useLabelAbbreviation();
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,8 +61,8 @@ export default function TheProjectPortfolio({ inModal = false }) {
         setLoading(true);
         setError(null);
         
-        const startDate = dateRange.startDate.toISOString().split('T')[0];
-        const endDate = dateRange.endDate.toISOString().split('T')[0];
+              const startDate = currentDateRange.startDate.toISOString().split('T')[0];
+      const endDate = currentDateRange.endDate.toISOString().split('T')[0];
         
         const baseUrl = getApiUrl("PROJECT_CLUSTERS");
         const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
@@ -82,7 +85,7 @@ export default function TheProjectPortfolio({ inModal = false }) {
       }
     };
     fetchClusters();
-  }, [dateRange]);
+  }, [currentDateRange]);
 
   // Apply filter to data
   const filteredPoints = useMemo(() => {
@@ -166,32 +169,64 @@ export default function TheProjectPortfolio({ inModal = false }) {
   };
 
   return (
-    <div className={`relative w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
-      {/* Quick select filter - only in modal */}
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+      {/* Chart Section */}
+      <div className={`relative w-full ${inModal ? 'flex-shrink-0' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+        {/* Quick select filter - only in modal */}
+        {inModal && (
+          <div className="absolute top-1 right-12 z-20">
+            <select
+              value={nValue}
+              onChange={(e) => setNValue(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
+              className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
+            >
+              <option value="all">All Projects</option>
+              <option value={20}>Top 20</option>
+              <option value={15}>Top 15</option>
+              <option value={10}>Top 10</option>
+              <option value={5}>Top 5</option>
+            </select>
+          </div>
+        )}
+        
+        <div className={`w-full ${inModal ? 'h-96' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+          <Scatter 
+            ref={chartRef}
+            key={`project-portfolio-${filteredPoints.length}`}
+            data={chartData} 
+            options={options} 
+          />
+        </div>
+      </div>
+
+      {/* Project Portfolio Analysis Content - Only in Modal View */}
       {inModal && (
-        <div className="absolute top-1 right-12 z-20">
-          <select
-            value={nValue}
-            onChange={(e) => setNValue(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
-            className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
-          >
-            <option value="all">All Projects</option>
-            <option value={20}>Top 20</option>
-            <option value={15}>Top 15</option>
-            <option value={10}>Top 10</option>
-            <option value={5}>Top 5</option>
-          </select>
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Project Portfolio Analysis</h4>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Story:</p>
+                <p className="text-sm text-gray-600">This scatter plot shows how projects differ in revenue contribution versus the number of transactions.</p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-700">Observation:</p>
+                <div className="ml-4 space-y-1">
+                  <p className="text-sm text-gray-600">• Projects like L&T TPCI Indirapuram appear as balanced "powerhouse" projects with moderate transactions and high revenue.</p>
+                  <p className="text-sm text-gray-600">• TATA Projects have high transaction counts but lower revenue per project, while Dolvi Labour Accommodation is a high-revenue but fewer transaction project.</p>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 p-3 rounded border-l-4 border-green-500">
+                <p className="text-sm font-medium text-gray-700">Recommendation:</p>
+                <p className="text-sm text-gray-600">Replicate strategies from balanced and high-performing projects for other projects to optimize revenue and workload.</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
-      
-      <div className={`w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
-        <Scatter 
-          ref={chartRef}
-          key={`project-portfolio-${filteredPoints.length}`}
-          data={chartData} 
-          options={options} 
-        />
-      </div>
     </div>
   );
 };

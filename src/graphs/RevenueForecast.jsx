@@ -17,42 +17,13 @@ import { useDateFilter } from "../contexts/DateFilterContext";
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
 
-// Client-side filtering function for date range
-const filterDataByDateRange = (labels, forecast, lower, upper, startDate, endDate) => {
-  const filteredIndices = [];
-  
-  labels.forEach((label, index) => {
-    // Handle different date formats: "YYYY-MM", "MMM YYYY", etc.
-    let labelDate;
-    if (label.includes('-')) {
-      // Format: "YYYY-MM"
-      labelDate = new Date(label + '-01');
-    } else if (label.includes(' ')) {
-      // Format: "MMM YYYY"
-      labelDate = new Date(label + ' 01');
-    } else {
-      // Try to parse as is
-      labelDate = new Date(label);
-    }
-    
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    if (labelDate >= start && labelDate <= end) {
-      filteredIndices.push(index);
-    }
-  });
-  
-  return {
-    labels: filteredIndices.map(i => labels[i]),
-    forecast: filteredIndices.map(i => forecast[i]),
-    lower: filteredIndices.map(i => lower[i]),
-    upper: filteredIndices.map(i => upper[i])
-  };
-};
 
-const RevenueForecast = ({ inModal = false }) => {
+
+const RevenueForecast = ({ inModal = false, modalDateRange = null }) => {
   const { dateRange } = useDateFilter();
+  
+  // Use modal date range if in modal, otherwise use global date range
+  const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
   const [labels, setLabels] = useState([]);
   const [forecast, setForecast] = useState([]);
   const [lower, setLower] = useState([]);
@@ -80,23 +51,8 @@ const RevenueForecast = ({ inModal = false }) => {
         setLoading(true);
         setError(null);
         
-        const startDate = dateRange.startDate.toISOString().split('T')[0];
-        const endDate = dateRange.endDate.toISOString().split('T')[0];
-        
-        console.log('RevenueForecast: Fetching data for date range:', { startDate, endDate });
-        
-        const baseUrl = getApiUrl('REVENUE_FORECAST');
-        const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
-        console.log('RevenueForecast: API URL:', url);
-        
-        let res = await fetch(url);
-        
-        // If the API doesn't support date filtering, try without date parameters
-        if (!res.ok && res.status === 500) {
-          console.log('RevenueForecast: API returned 500, trying without date parameters');
-          const fallbackUrl = getApiUrl('REVENUE_FORECAST');
-          res = await fetch(fallbackUrl);
-        }
+                      const baseUrl = getApiUrl('REVENUE_FORECAST');
+        const res = await fetch(baseUrl);
         
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
@@ -105,13 +61,10 @@ const RevenueForecast = ({ inModal = false }) => {
         const f = datasets.find(d => /forecast/i.test(d.label))?.data || [];
         const lb = datasets.find(d => /lower/i.test(d.label))?.data || [];
         const ub = datasets.find(d => /upper/i.test(d.label))?.data || [];
-        // Client-side filtering if API doesn't support date filtering
-        const filteredData = filterDataByDateRange(apiLabels, f, lb, ub, startDate, endDate);
-        
-        setLabels(filteredData.labels);
-        setForecast(filteredData.forecast);
-        setLower(filteredData.lower);
-        setUpper(filteredData.upper);
+        setLabels(apiLabels);
+        setForecast(f);
+        setLower(lb);
+        setUpper(ub);
       } catch (e) {
         console.error('Failed to fetch revenue forecast:', e);
         setError(e?.message || 'Failed to load');
@@ -124,7 +77,7 @@ const RevenueForecast = ({ inModal = false }) => {
       }
     };
     fetchForecast();
-  }, [dateRange]);
+  }, []);
 
   const data = {
     labels,
@@ -181,26 +134,58 @@ const RevenueForecast = ({ inModal = false }) => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">
-        The Oracle's Vision: 12-Month Revenue Forecast
-      </h2>
-      {loading ? (
-        <div className="text-gray-500">Loading forecast…</div>
-      ) : labels.length ? (
-        <div className="flex-1 min-h-0">
-          <Line 
-            ref={chartRef}
-            data={data} 
-            options={{
-              ...options,
-              responsive: true,
-              maintainAspectRatio: false,
-            }}
-          />
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`} style={inModal ? {} : { height: '400px' }}>
+      {/* Chart Section */}
+      <div className={`w-full ${inModal ? 'flex-shrink-0' : 'h-full'}`} style={inModal ? {} : { height: '400px' }}>
+        <h2 className={`${inModal ? 'text-xl' : 'text-lg'} font-semibold text-gray-800 mb-4`}>
+          The Oracle's Vision: 12-Month Revenue Forecast
+        </h2>
+        {loading ? (
+          <div className="text-gray-500">Loading forecast…</div>
+        ) : labels.length ? (
+          <div className={`${inModal ? 'h-96' : 'h-full'} min-h-0 overflow-hidden`} style={inModal ? {} : { height: 'calc(100% - 60px)' }}>
+            <Line 
+              ref={chartRef}
+              data={data} 
+              options={{
+                ...options,
+                responsive: true,
+                maintainAspectRatio: false,
+              }}
+            />
+          </div>
+        ) : (
+          <div className="text-red-500">{error || 'No forecast data available.'}</div>
+        )}
+      </div>
+
+      {/* Revenue Forecast Analysis Content - Only in Modal View */}
+      {inModal && (
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Revenue Forecast Analysis</h4>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Story:</p>
+                <p className="text-sm text-gray-600">This line chart projects revenue over the next 12 months, showing forecasted trends with upper and lower bounds.</p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-700">Observation:</p>
+                <div className="ml-4 space-y-1">
+                  <p className="text-sm text-gray-600">• Current revenue peaks at around ₹40M.</p>
+                  <p className="text-sm text-gray-600">• Optimistic forecast stabilizes at ₹20M, while pessimistic projection shows a sharp decline.</p>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 p-3 rounded border-l-4 border-green-500">
+                <p className="text-sm font-medium text-gray-700">Recommendation:</p>
+                <p className="text-sm text-gray-600">Secure new contracts, diversify customers, and optimize spend to stabilize revenue and reduce forecast risk.</p>
+              </div>
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="text-red-500">{error || 'No forecast data available.'}</div>
       )}
     </div>
   );

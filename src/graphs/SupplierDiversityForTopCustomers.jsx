@@ -25,9 +25,12 @@ ChartJS.register(
   ChartDataLabels
 );
 
-export default function SupplierDiversityForTopCustomers({ inModal = false }) {
+export default function SupplierDiversityForTopCustomers({ inModal = false, modalDateRange = null }) {
   const { dateRange } = useDateFilter();
-  const { abbreviateLabel } = useLabelAbbreviation(12);
+  
+  // Use modal date range if in modal, otherwise use global date range
+  const currentDateRange = inModal && modalDateRange ? modalDateRange : dateRange;
+  const { abbreviateLabel, formatAxisValue } = useLabelAbbreviation(12);
   const [labels, setLabels] = useState([]);
   const [values, setValues] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,8 +66,8 @@ export default function SupplierDiversityForTopCustomers({ inModal = false }) {
         setLoading(true);
         setError(null);
         
-        const startDate = dateRange.startDate.toISOString().split('T')[0];
-        const endDate = dateRange.endDate.toISOString().split('T')[0];
+              const startDate = currentDateRange.startDate.toISOString().split('T')[0];
+      const endDate = currentDateRange.endDate.toISOString().split('T')[0];
         
         const baseUrl = getApiUrl("RISK_ANALYSIS");
         const url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
@@ -83,7 +86,7 @@ export default function SupplierDiversityForTopCustomers({ inModal = false }) {
       }
     };
     fetchData();
-  }, [dateRange]);
+  }, [currentDateRange]);
 
   // Apply filter to data
   const filteredData = useMemo(() => {
@@ -158,7 +161,7 @@ export default function SupplierDiversityForTopCustomers({ inModal = false }) {
         clamp: true,
         clip: true,
         font: { weight: 'bold', size: 10 },
-        formatter: (value) => Number(value).toLocaleString(),
+        formatter: (value) => formatAxisValue(value),
       },
     },
     scales: {
@@ -189,32 +192,64 @@ export default function SupplierDiversityForTopCustomers({ inModal = false }) {
   };
 
   return (
-    <div className={`relative w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
-      {/* Quick select filter - only in modal */}
+    <div className={`w-full flex flex-col ${inModal ? '' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+      {/* Chart Section */}
+      <div className={`relative w-full ${inModal ? 'flex-shrink-0' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+        {/* Quick select filter - only in modal */}
+        {inModal && (
+          <div className="absolute top-1 right-12 z-20">
+            <select
+              value={nValue}
+              onChange={(e) => setNValue(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
+              className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
+            >
+              <option value="all">All Customers</option>
+              <option value={10}>Top 10</option>
+              <option value={5}>Top 5</option>
+              <option value={3}>Top 3</option>
+              <option value={2}>Top 2</option>
+            </select>
+          </div>
+        )}
+        
+        <div className={`w-full ${inModal ? 'h-96' : 'h-full'}`} style={inModal ? {} : { height: chartHeight }}>
+          <Bar 
+            ref={chartRef}
+            key={`supplier-diversity-${filteredData.labels.length}`}
+            data={data} 
+            options={options} 
+          />
+        </div>
+      </div>
+
+      {/* Supplier Diversity Analysis Content - Only in Modal View */}
       {inModal && (
-        <div className="absolute top-1 right-12 z-20">
-          <select
-            value={nValue}
-            onChange={(e) => setNValue(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
-            className="px-3 py-1 border border-gray-300 rounded text-sm bg-white shadow-sm"
-          >
-            <option value="all">All Customers</option>
-            <option value={10}>Top 10</option>
-            <option value={5}>Top 5</option>
-            <option value={3}>Top 3</option>
-            <option value={2}>Top 2</option>
-          </select>
+        <div className="mt-6 px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <h4 className="text-lg font-semibold text-gray-800">Supplier Diversity Analysis</h4>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Key Findings:</p>
+                <div className="ml-4 space-y-1">
+                  <p className="text-sm text-gray-600">• Most big customers rely on 10–30 suppliers.</p>
+                  <p className="text-sm text-gray-600">• Outlier: Logython India uses 50+ suppliers → diversified approach.</p>
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-700">Story:</p>
+                <p className="text-sm text-gray-600">A concentrated supplier base increases risk, while diversified customers like Logython India demonstrate resilience and flexibility.</p>
+              </div>
+              
+              <div className="bg-green-50 p-3 rounded border-l-4 border-green-500">
+                <p className="text-sm font-medium text-gray-700">Actionable Recommendation:</p>
+                <p className="text-sm text-gray-600">Encourage diversification for concentrated clients and reduce dependency on a few suppliers.</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
-      
-      <div className={`w-full ${inModal ? 'h-full' : ''}`} style={inModal ? {} : { height: chartHeight }}>
-        <Bar 
-          ref={chartRef}
-          key={`supplier-diversity-${filteredData.labels.length}`}
-          data={data} 
-          options={options} 
-        />
-      </div>
     </div>
   );
 };
