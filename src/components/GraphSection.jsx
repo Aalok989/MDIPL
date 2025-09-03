@@ -1,31 +1,31 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, lazy, Suspense } from 'react';
 import useResizeKey from '../hooks/useResizeKey';
 import { FiEye, FiX } from 'react-icons/fi';
 import DateRangeFilter from './DateRangeFilter';
 import ModalDateRangeFilter from './ModalDateRangeFilter';
 
-// Import all graph components
-import SpendBySeasonChart from '../graphs/SpendBySeasonChart';
-import TopVendorsChart from '../graphs/TopVendorsChart';
-import ProjectsCompletedByMonths from '../graphs/ProjectsCompletedByMonths';
-import TotalSalesPerMonth from '../graphs/TotalSalesPerMonth';
-import DayOfWeekSalesChart from '../graphs/DayOfWeekSalesChart';
-import SuppliersByTotalSpend from '../graphs/SuppliersByTotalSpend';
-import CustomersByTotalRevenue from '../graphs/CustomersByTotalRevenue';
-import TypicalDealSize from '../graphs/TypicalDealSize';
-import DealSizeDistribution from '../graphs/DealSizeDistribution';
-import ProjectsByTotalRevenue from '../graphs/ProjectsByTotalRevenue';
-import LoyalLegion from '../graphs/LoyalLegion';
-import TheCustomerValueMatrix from '../graphs/TheCustomerValueMatrix';
-import ProjectEfficiency from '../graphs/ProjectEfficiency';
-import WhoFundsOurTopProjects from '../graphs/WhoFundsOurTopProjects';
-import SupplyChainConcentrationRisk from '../graphs/SupplyChainConcentrationRisk';
-import SupplierDiversityForTopCustomers from '../graphs/SupplierDiversityForTopCustomers';
-import TheProjectPortfolio from '../graphs/TheProjectPortfolio';
-import SuccessBlueprintSuppliers from '../graphs/SuccessBlueprintSuppliers';
-import SuccessBlueprintCustomers from '../graphs/SuccessBlueprintCustomers';
-import RevenueForecast from '../graphs/RevenueForecast';
-import CustomerByHealthScore from '../graphs/CustomerByHealthScore';
+// Lazy load all graph components for code splitting
+const SpendBySeasonChart = lazy(() => import('../graphs/SpendBySeasonChart'));
+const TopVendorsChart = lazy(() => import('../graphs/TopVendorsChart'));
+const ProjectsCompletedByMonths = lazy(() => import('../graphs/ProjectsCompletedByMonths'));
+const TotalSalesPerMonth = lazy(() => import('../graphs/TotalSalesPerMonth'));
+const DayOfWeekSalesChart = lazy(() => import('../graphs/DayOfWeekSalesChart'));
+const SuppliersByTotalSpend = lazy(() => import('../graphs/SuppliersByTotalSpend'));
+const CustomersByTotalRevenue = lazy(() => import('../graphs/CustomersByTotalRevenue'));
+const TypicalDealSize = lazy(() => import('../graphs/TypicalDealSize'));
+const DealSizeDistribution = lazy(() => import('../graphs/DealSizeDistribution'));
+const ProjectsByTotalRevenue = lazy(() => import('../graphs/ProjectsByTotalRevenue'));
+const LoyalLegion = lazy(() => import('../graphs/LoyalLegion'));
+const TheCustomerValueMatrix = lazy(() => import('../graphs/TheCustomerValueMatrix'));
+const ProjectEfficiency = lazy(() => import('../graphs/ProjectEfficiency'));
+const WhoFundsOurTopProjects = lazy(() => import('../graphs/WhoFundsOurTopProjects'));
+const SupplyChainConcentrationRisk = lazy(() => import('../graphs/SupplyChainConcentrationRisk'));
+const SupplierDiversityForTopCustomers = lazy(() => import('../graphs/SupplierDiversityForTopCustomers'));
+const TheProjectPortfolio = lazy(() => import('../graphs/TheProjectPortfolio'));
+const SuccessBlueprintSuppliers = lazy(() => import('../graphs/SuccessBlueprintSuppliers'));
+const SuccessBlueprintCustomers = lazy(() => import('../graphs/SuccessBlueprintCustomers'));
+const RevenueForecast = lazy(() => import('../graphs/RevenueForecast'));
+const CustomerByHealthScore = lazy(() => import('../graphs/CustomerByHealthScore'));
 
 // Reusable card component
 const GraphCard = ({ children, onView }) => {
@@ -115,7 +115,9 @@ const GraphSection = () => {
           const Cmp = chart.Component;
           return (
             <GraphCard key={`${resizeKey}-${index}`} onView={() => openModal(chart.key)}>
-              <Cmp />
+              <Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>}>
+                <Cmp />
+              </Suspense>
             </GraphCard>
           );
         })}
@@ -146,12 +148,14 @@ const GraphSection = () => {
               />
               
               <div className="w-full flex-1 min-h-0 overflow-y-auto">
-                {(() => {
-                  const found = charts.find(c => c.key === selectedChartKey);
-                  if (!found) return null;
-                  const Selected = found.Component;
-                  return <Selected inModal modalDateRange={modalDateRange} />;
-                })()}
+                <Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>}>
+                  {(() => {
+                    const found = charts.find(c => c.key === selectedChartKey);
+                    if (!found) return null;
+                    const Selected = found.Component;
+                    return <Selected inModal modalDateRange={modalDateRange} />;
+                  })()}
+                </Suspense>
               </div>
             </div>
           </div>
